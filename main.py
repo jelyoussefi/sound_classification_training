@@ -25,8 +25,8 @@ class SoundDataSet :
 
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['classID'] = np.array([c.split('--')[0] for c in self.df['path']])
-		classes = np.unique(self.df['classID'])
-		self.df['classID'] = np.array([np.where(classes==c)[0] for c in self.df['classID']])
+		self.classes = np.unique(self.df['classID'])
+		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']])
 		self.df['path'] = ds_path + '/' + self.df['path'];
 
 		self.duration = 4000
@@ -49,9 +49,9 @@ class SoundDataSet :
 		dur_aud = self.pad_trunc(rechan, self.duration)
 		shift_aud = self.time_shift(dur_aud, self.shift_pct)
 		sgram = self.spectro_gram(shift_aud, n_mels=64, n_fft=1024, hop_len=None)
-		img = Image.fromarray(sgram[1].numpy(), 'RGB')
-		img.save('my.png')
-		img.show()
+		#img = Image.fromarray(sgram[1].numpy(), 'RGB')
+		#img.save('my.png')
+		#img.show()
 		aug_sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
 
 		return aug_sgram, class_id
@@ -138,7 +138,7 @@ class SoundDataSet :
 		return aug_spec
 
 class AudioClassifier (nn.Module):
-	def __init__(self):
+	def __init__(self, nb_classes):
 		super().__init__()
 		conv_layers = []
 
@@ -176,7 +176,7 @@ class AudioClassifier (nn.Module):
 
 		# Linear Classifier
 		self.ap = nn.AdaptiveAvgPool2d(output_size=1)
-		self.lin = nn.Linear(in_features=64, out_features=10)
+		self.lin = nn.Linear(in_features=64, out_features=nb_classes)
 
 		# Wrap the Convolutional Blocks
 		self.conv = nn.Sequential(*conv_layers)
@@ -196,7 +196,7 @@ class AudioClassifier (nn.Module):
 
 	def train(self, model, ds, device, num_epochs):
 
-		train_dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=True)
+		train_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
 		# Loss Function, Optimizer and Scheduler
 		criterion = nn.CrossEntropyLoss()
 		optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
@@ -211,40 +211,40 @@ class AudioClassifier (nn.Module):
 			correct_prediction = 0
 			total_prediction = 0
 
-		# Repeat for each batch in the training set
-		for i, data in enumerate(train_dl):
-			# Get the input features and target labels, and put them on the GPU
-			inputs, labels = data[0].to(device), data[1].to(device)
+			# Repeat for each batch in the training set
+			for i, data in enumerate(train_dl):
+				# Get the input features and target labels, and put them on the GPU
+				inputs, labels = data[0].to(device), data[1].to(device)
 
-			# Normalize the inputs
-			inputs_m, inputs_s = inputs.mean(), inputs.std()
-			inputs = (inputs - inputs_m) / inputs_s
+				# Normalize the inputs
+				inputs_m, inputs_s = inputs.mean(), inputs.std()
+				inputs = (inputs - inputs_m) / inputs_s
 
-			# Zero the parameter gradients
-			optimizer.zero_grad()
+				# Zero the parameter gradients
+				optimizer.zero_grad()
 
-			# forward + backward + optimize
-			outputs = model(inputs)
-			loss = criterion(outputs, labels)
-			loss.backward()
-			optimizer.step()
-			scheduler.step()
+				# forward + backward + optimize
+				outputs = model(inputs)
+				loss = criterion(outputs, labels)
+				loss.backward()
+				optimizer.step()
+				scheduler.step()
 
-			# Keep stats for Loss and Accuracy
-			running_loss += loss.item()
+				# Keep stats for Loss and Accuracy
+				running_loss += loss.item()
 
-			# Get the predicted class with the highest score
-			_, prediction = torch.max(outputs,1)
-			# Count of predictions that matched the target label
-			correct_prediction += (prediction == labels).sum().item()
-			total_prediction += prediction.shape[0]
+				# Get the predicted class with the highest score
+				_, prediction = torch.max(outputs,1)
+				# Count of predictions that matched the target label
+				correct_prediction += (prediction == labels).sum().item()
+				total_prediction += prediction.shape[0]
 
-       
-		# Print stats at the end of the epoch
-		num_batches = len(train_dl)
-		avg_loss = running_loss / num_batches
-		acc = correct_prediction/total_prediction
-		print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
+	       
+			# Print stats at the end of the epoch
+			num_batches = len(train_dl)
+			avg_loss = running_loss / num_batches
+			acc = correct_prediction/total_prediction
+			print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
 
 		print('Finished Training')
 
@@ -266,13 +266,13 @@ def main(argv):
 
 	ds = SoundDataSet(csvFile)
 
-	model = AudioClassifier()
+	model = AudioClassifier(len(ds.classes))
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	model = model.to(device)
 	# Check that it is on Cuda
 	next(model.parameters()).device
 
-	model.train(model, ds, device, num_epochs=1000)
+	model.train(model, ds, device, num_epochs=2)
 
 
 if __name__ == "__main__":
