@@ -16,7 +16,7 @@ install_prerequisite:
 	@pip3 install -r ./requirements.txt	
 
 train:
-	@$(call msg, Traing the Audio Classification Model   ...)
+	@$(call msg, Training the Audio Classification Model   ...)
 	@python3 ./main.py
 
 #----------------------------------------------------------------------------------------------------------------------

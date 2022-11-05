@@ -16,6 +16,7 @@ import torchaudio
 from torchaudio import transforms
 from IPython.display import Audio
 from PIL import Image
+from torch.utils.data import random_split
 
 
 class SoundDataSet :
@@ -28,7 +29,8 @@ class SoundDataSet :
 		self.classes = np.unique(self.df['classID'])
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']])
 		self.df['path'] = ds_path + '/' + self.df['path'];
-
+		self.df = self.df.sample(int(len(self.df)*0.01), ignore_index=True)
+		print(len(self.df))
 		self.duration = 4000
 		self.sr = 44100
 		self.channel = 2
@@ -239,13 +241,12 @@ class AudioClassifier (nn.Module):
 				correct_prediction += (prediction == labels).sum().item()
 				total_prediction += prediction.shape[0]
 
-	       
 			# Print stats at the end of the epoch
 			num_batches = len(train_dl)
 			avg_loss = running_loss / num_batches
 			acc = correct_prediction/total_prediction
 			print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
-
+		torch.save(model, "./mnhn_model.pth" )
 		print('Finished Training')
 
 def main(argv):
@@ -267,12 +268,15 @@ def main(argv):
 	ds = SoundDataSet(csvFile)
 
 	model = AudioClassifier(len(ds.classes))
-	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+	device = torch.device("cpu")
+	if torch.cuda.is_available():
+		device = torch.device("cuda")
+		print("Using Cuda");
 	model = model.to(device)
 	# Check that it is on Cuda
 	next(model.parameters()).device
 
-	model.train(model, ds, device, num_epochs=2)
+	model.train(model, ds, device, num_epochs=1000)
 
 
 if __name__ == "__main__":
