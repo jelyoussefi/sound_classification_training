@@ -17,6 +17,8 @@ from torchaudio import transforms
 from IPython.display import Audio
 from PIL import Image
 from torch.utils.data import random_split
+from torch.utils.tensorboard import SummaryWriter
+
 import time
 
 class SoundDataSet :
@@ -35,7 +37,7 @@ class SoundDataSet :
 		self.classes = np.unique(self.df['classID'])
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']])
 		self.df['path'] = ds_path + '/' + self.df['path'];
-		#self.df = self.df.sample(int(len(self.df)*0.1), ignore_index=True)
+		#self.df = self.df.sample(int(len(self.df)*0.01), ignore_index=True)
 		print("Creating audio spectrum ...");
 		sgrams = []
 		st = time.time()
@@ -214,6 +216,8 @@ class AudioClassifier (nn.Module):
 		                                        	epochs=num_epochs,
 		                                        	anneal_strategy='linear')
 
+		writer = SummaryWriter()
+
 		# Repeat for each epoch
 		for epoch in range(num_epochs):
 			running_loss = 0.0
@@ -252,8 +256,13 @@ class AudioClassifier (nn.Module):
 			num_batches = len(train_dl)
 			avg_loss = running_loss / num_batches
 			acc = correct_prediction/total_prediction
+			writer.add_scalar("Acc/train", acc, epoch)
+			writer.flush()
+
 			print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
 		torch.save(model, "./mnhn_model.pth" )
+		writer.close()
+
 		print('Finished Training')
 
 def main(argv):
