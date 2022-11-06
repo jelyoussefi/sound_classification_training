@@ -13,11 +13,11 @@ default: train
 
 install_prerequisite:
 	@$(call msg, Installing Prerequisite  ...)
-	@pip3 install -r ./requirements.txt	
+	@pip3 install torch==1.13.0+cu116 torchvision==0.14.0+cu116 torchaudio==0.13.0+cu116 -f https://download.pytorch.org/whl/cu116/torch_stable.html	
 
 train:
 	@$(call msg, Training the Audio Classification Model   ...)
-	@python3 ./main.py
+	@python3 ./train.py
 
 #----------------------------------------------------------------------------------------------------------------------
 # helper functions
