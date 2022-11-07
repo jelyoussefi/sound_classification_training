@@ -19,7 +19,7 @@ from IPython.display import Audio
 import time
 
 class SoundDataSet :
-	def __init__(self, metadata_file, device):
+	def __init__(self, metadata_file, device, ratio=1):
 		self.device = device
 		self.duration = 4000
 		self.sr = 44100
@@ -34,7 +34,7 @@ class SoundDataSet :
 		self.classes = np.unique(self.df['classID'])
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']])
 		self.df['path'] = ds_path + '/' + self.df['path'];
-		self.df = self.df.sample(int(len(self.df)*0.01), ignore_index=True)
+		self.df = self.df.sample(int(len(self.df)*ratio), ignore_index=True)
 		print("Creating audio spectrum ...");
 		sgrams = []
 		st = time.time()

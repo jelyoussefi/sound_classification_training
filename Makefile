@@ -19,6 +19,10 @@ train:
 	@$(call msg, Training the Audio Classification Model   ...)
 	@python3 ./train.py
 
+valid:
+	@$(call msg, Validating the Audio Classification Model   ...)
+	@python3 ./valid.py -m ./mnhn_model.pth
+
 #----------------------------------------------------------------------------------------------------------------------
 # helper functions
 #----------------------------------------------------------------------------------------------------------------------
