@@ -90,7 +90,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 	
-	ds = SoundDataSet(csvFile, device, 0.01)
+	ds = SoundDataSet(csvFile, device, 1.0)
 
 	model = AudioClassifier(len(ds.classes))
 	model.to(device)

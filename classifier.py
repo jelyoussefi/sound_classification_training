@@ -39,7 +39,6 @@ class SoundDataSet :
 		sgrams = []
 		st = time.time()
 		for idx in range(len(self.df)):
-
 			audio_file = self.df.loc[idx, 'path']
 			signal, sr = torchaudio.load(audio_file)
 			reaud = self.resample((signal, sr), self.sr)

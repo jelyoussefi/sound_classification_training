@@ -4,7 +4,8 @@
 SHELL:=/bin/bash
 CURRENT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-
+DOCKER_IMAGE_NAME=sound_classification_training_image
+export DOCKER_BUILDKIT=1
 #----------------------------------------------------------------------------------------------------------------------
 # Targets
 #----------------------------------------------------------------------------------------------------------------------
@@ -23,6 +24,16 @@ valid:
 	@$(call msg, Validating the Audio Classification Model   ...)
 	@python3 ./valid.py -m ./mnhn_model.pth
 
+
+docker-build:
+	@$(call msg, Building docker image ${DOCKER_IMAGE_NAME} ...)
+	@docker build  -t ${DOCKER_IMAGE_NAME} .
+
+
+docker-train: docker-build
+	@$(call msg, Traing with docker image ${DOCKER_IMAGE_NAME} ...)
+	@docker run -it --rm -a stdout -a stderr -v ${CURRENT_DIR}:/workspace -w /workspace --gpus all ${DOCKER_IMAGE_NAME}  \
+		make
 #----------------------------------------------------------------------------------------------------------------------
 # helper functions
 #----------------------------------------------------------------------------------------------------------------------
