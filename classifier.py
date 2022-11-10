@@ -19,9 +19,9 @@ from IPython.display import Audio
 import time
 
 class SoundDataSet :
-	def __init__(self, metadata_file, device, ratio=1):
+	def __init__(self, metadata_file, device, labels_file=None, ratio=1):
 		self.device = device
-		self.duration = 4000
+		self.duration = 1000
 		self.sr = 44100
 		self.channel = 2
 		self.shift_pct = 0.4
@@ -31,7 +31,19 @@ class SoundDataSet :
 
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['classID'] = np.array([c.split('--')[0] for c in self.df['path']])
-		self.classes = np.unique(self.df['classID'])
+
+		if labels_file is None:
+			self.classes = np.unique(self.df['classID'])
+			print(self.classes)
+
+			with open(r'./classes.txt', 'w') as fp:
+				fp.write('\n'.join(self.classes))
+		else:
+			with open(labels_file) as f:
+				self.classes = np.array(f.read().splitlines())
+				print(self.classes)
+
+
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']])
 		self.df['path'] = ds_path + '/' + self.df['path'];
 		self.df = self.df.sample(int(len(self.df)*ratio), ignore_index=True)
@@ -40,7 +52,14 @@ class SoundDataSet :
 		st = time.time()
 		for idx in range(len(self.df)):
 			audio_file = self.df.loc[idx, 'path']
-			signal, sr = torchaudio.load(audio_file)
+			info = torchaudio.info(audio_file)
+			f_time = 1/info.sample_rate
+			f_start_time = (self.df.loc[idx, 'start_time']*info.sample_rate)/1000.0
+			f_duration = (self.df.loc[idx, 'duration']*info.sample_rate)/1000.0
+			f_center = f_start_time + f_duration/2;
+			f_audio_duration = int((self.duration*info.sample_rate)/1000.0)
+			f_offset = max(0, int(f_center - f_audio_duration/2))
+			signal, sr = torchaudio.load(audio_file, frame_offset=f_offset, num_frames=f_audio_duration)
 			reaud = self.resample((signal, sr), self.sr)
 			rechan = self.rechannel(reaud, self.channel)
 			dur_aud = self.pad_trunc(rechan, self.duration)

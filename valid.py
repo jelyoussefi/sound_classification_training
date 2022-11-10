@@ -20,7 +20,7 @@ class Inference :
 	def run(self, ds):
 		correct_prediction = 0
 		total_prediction = 0
-		val_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=False)
+		val_dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=True)
 		# Disable gradient updates
 		with torch.no_grad():
 			for data in val_dl:
@@ -33,10 +33,9 @@ class Inference :
 
 				# Get predictions
 				outputs = self.model(inputs)
-
+				print(outputs)
 				# Get the predicted class with the highest score
 				_, prediction = torch.max(outputs,1)
-				print(prediction)
 				# Count of predictions that matched the target label
 				correct_prediction += (prediction == labels).sum().item()
 				total_prediction += prediction.shape[0]
@@ -71,8 +70,7 @@ def main(argv):
 	
 	model = torch.load(model_path)
 
-	ds = SoundDataSet(csvFile, device, 0.5)
-	print(len(ds))
+	ds = SoundDataSet(csvFile, device, labels_file="./classes.txt", ratio=0.5)
 	inf = Inference(device, model)
 
 	inf.run(ds)

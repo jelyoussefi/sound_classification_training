@@ -11,7 +11,7 @@ import time
 from classifier import SoundDataSet, AudioClassifier
 
 
-def train(model, ds, device, num_epochs):
+def train(model, ds, device, num_epochs, threshold=0.99):
 
 	train_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
 	# Loss Function, Optimizer and Scheduler
@@ -66,6 +66,9 @@ def train(model, ds, device, num_epochs):
 		writer.flush()
 
 		print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
+		if acc >= threshold :
+			break;
+
 	torch.save(model, "./mnhn_model.pth" )
 	writer.close()
 
@@ -90,7 +93,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 	
-	ds = SoundDataSet(csvFile, device, 1.0)
+	ds = SoundDataSet(csvFile, device, ratio=0.01)
 
 	model = AudioClassifier(len(ds.classes))
 	model.to(device)
