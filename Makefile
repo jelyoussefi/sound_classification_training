@@ -32,7 +32,7 @@ docker-build:
 
 docker-train: docker-build
 	@$(call msg, Traing with docker image ${DOCKER_IMAGE_NAME} ...)
-	@docker run -it --rm -a stdout -a stderr -v ${CURRENT_DIR}:/workspace -w /workspace --gpus all ${DOCKER_IMAGE_NAME}  \
+	@docker run -it --rm -a stdout -a stderr -v ${CURRENT_DIR}:/workspace -v /data:/data -w /workspace --gpus all ${DOCKER_IMAGE_NAME}  \
 		make
 #----------------------------------------------------------------------------------------------------------------------
 # helper functions
