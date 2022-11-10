@@ -35,8 +35,7 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 	                                        	anneal_strategy='linear')
 
 	writer = SummaryWriter()
-	acc = 0
-	last_saved_acc = 0;
+	last_saved_acc = 0
 
 	# Repeat for each epoch
 	for epoch in range(num_epochs):
@@ -79,8 +78,10 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 		acc = correct_prediction/total_prediction
 		writer.add_scalar("Acc/train", acc, epoch)
 		writer.flush()
-		if (int(acc*100) % 10) == 0 :
+		i_acc = int((acc)*100)
+		if i_acc >= 50 and i_acc % 10 == 0 and last_saved_acc != i_acc:
 			save(model,acc,output_dir)
+			last_saved_acc = i_acc
 
 		print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
 		if acc >= threshold :
