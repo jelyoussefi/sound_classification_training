@@ -1,17 +1,29 @@
 #!/usr/bin/python
 
 import os, sys, getopt
+import time
+from datetime import datetime
 
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-
-import time
-
 from classifier import SoundDataSet, AudioClassifier
 
 
-def train(model, ds, device, num_epochs, threshold=0.99):
+def save(model, acc, output_dir):
+	acc = int(acc*100)
+	if not os.path.exists(output_dir):
+		os.makedirs(output_dir)
+	date_time = datetime.now().strftime("%d_%m_%Y_%H_%M")
+	model_path=os.path.join(output_dir,"model_"+date_time+"_acc-"+str(acc)+".pth")
+	print("\nSaving ", model_path, " model ...\n")
+	torch.save(model, model_path)
+	model_path_symblink = os.path.join(output_dir, "model.pth")
+	if os.path.islink(model_path_symblink):
+		os.remove(model_path_symblink)
+	os.symlink(model_path, model_path_symblink)
+
+def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 
 	train_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
 	# Loss Function, Optimizer and Scheduler
@@ -23,6 +35,8 @@ def train(model, ds, device, num_epochs, threshold=0.99):
 	                                        	anneal_strategy='linear')
 
 	writer = SummaryWriter()
+	acc = 0
+	last_saved_acc = 0;
 
 	# Repeat for each epoch
 	for epoch in range(num_epochs):
@@ -58,18 +72,21 @@ def train(model, ds, device, num_epochs, threshold=0.99):
 			correct_prediction += (prediction == labels).sum().item()
 			total_prediction += prediction.shape[0]
 
+
 		# Print stats at the end of the epoch
 		num_batches = len(train_dl)
 		avg_loss = running_loss / num_batches
 		acc = correct_prediction/total_prediction
 		writer.add_scalar("Acc/train", acc, epoch)
 		writer.flush()
+		if (int(acc*100) % 10) == 0 :
+			save(model,acc,output_dir)
 
 		print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
 		if acc >= threshold :
+			save(model,acc,output_dir)
 			break;
 
-	torch.save(model, "./mnhn_model.pth" )
 	writer.close()
 
 	print('Finished Training')
@@ -77,9 +94,10 @@ def train(model, ds, device, num_epochs, threshold=0.99):
 def main(argv):
 
 	csvFile = "./dataset/training/config.csv"
+	output_dir = "./model"
 
 	try:
-		opts, args = getopt.getopt(argv[1:],"hc:",["config="])
+		opts, args = getopt.getopt(argv[1:],"hc:o:",["config=","ouput_dir="])
 	except getopt.GetoptError:
 		print("{} -c <csv file>".format(argv[0]))
 		sys.exit(2)
@@ -89,11 +107,13 @@ def main(argv):
 			sys.exit()
 		elif opt in ("-c", "--config"):
 			csvFile = arg
+		elif opt in ("-o", "--ouput_dir"):
+			output_dir = arg
 
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 	
-	ds = SoundDataSet(csvFile, device, ratio=0.1)
+	ds = SoundDataSet(csvFile, device, ratio=0.01)
 
 	model = AudioClassifier(len(ds.classes))
 	model.to(device)
@@ -101,7 +121,7 @@ def main(argv):
 	# Check that it is on Cuda
 	#next(model.parameters()).device
 
-	train(model, ds, device, num_epochs=1000)
+	train(model, ds, device, num_epochs=1000, output_dir=output_dir)
 
 
 if __name__ == "__main__":

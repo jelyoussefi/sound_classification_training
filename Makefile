@@ -18,7 +18,8 @@ install_prerequisite:
 
 train:
 	@$(call msg, Training the Audio Classification Model   ...)
-	@python3 ./train.py
+	@rm -rf ./model/*
+	@python3 ./train.py -o "./model"
 
 valid:
 	@$(call msg, Validating the Audio Classification Model   ...)

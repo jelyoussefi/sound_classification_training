@@ -34,7 +34,6 @@ class SoundDataSet :
 
 		if labels_file is None:
 			self.classes = np.unique(self.df['classID'])
-			print(self.classes)
 
 			with open(r'./classes.txt', 'w') as fp:
 				fp.write('\n'.join(self.classes))
