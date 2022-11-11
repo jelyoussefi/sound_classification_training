@@ -23,7 +23,7 @@ train:
 
 valid:
 	@$(call msg, Validating the Audio Classification Model   ...)
-	@python3 ./valid.py -m ./mnhn_model.pth
+	@python3 ./valid.py -m ./model/model.pth
 
 
 docker-build:

@@ -25,7 +25,7 @@ def save(model, acc, output_dir):
 
 def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 
-	train_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
+	train_dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=True)
 	# Loss Function, Optimizer and Scheduler
 	criterion = nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(model.parameters(),lr=0.001)

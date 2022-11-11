@@ -27,6 +27,7 @@ class Inference :
 				# Get the input features and target labels, and put them on the GPU
 				inputs, labels = data[0].to(self.device), data[1].to(self.device)
 
+				
 				# Normalize the inputs
 				inputs_m, inputs_s = inputs.mean(), inputs.std()
 				inputs = (inputs - inputs_m) / inputs_s
@@ -45,7 +46,7 @@ class Inference :
 
 def main(argv):
 
-	csvFile = "./dataset/validation/config.csv"
+	csvFile = "./dataset/validation/config_l.csv"
 	model_path = None
 	try:
 		opts, args = getopt.getopt(argv[1:],"hc:m:",["config=", "model="])
@@ -70,7 +71,7 @@ def main(argv):
 	
 	model = torch.load(model_path)
 
-	ds = SoundDataSet(csvFile, device, labels_file="./classes.txt", ratio=0.5)
+	ds = SoundDataSet(csvFile, device, labels_file="./classes.txt", ratio=1)
 	inf = Inference(device, model)
 
 	inf.run(ds)
