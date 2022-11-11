@@ -18,7 +18,7 @@ from torchaudio import transforms
 from IPython.display import Audio, display
 import matplotlib.pyplot as plt
 import librosa
-
+from torchsummary  import summary
 
 class AudioProcessor() :
 	def __init__(self, device, duration, frame_rate, augment=True):
@@ -222,40 +222,34 @@ class AudioClassifier (nn.Module):
 		super().__init__()
 		conv_layers = []
 		# First Convolution Block with Relu and Batch Norm. Use Kaiming Initialization
-		self.conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+		self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=2)
 		self.relu1 = nn.ReLU()
-		self.bn1 = nn.BatchNorm2d(num_features=8)
-		init.kaiming_normal_(self.conv1.weight, a=0.1)
-		self.conv1.bias.data.zero_()
-		conv_layers += [self.conv1, self.relu1, self.bn1]
+		self.mp1 = nn.MaxPool2d(kernel_size=2)
+		conv_layers += [self.conv1, self.relu1, self.mp1]
 
 		# Second Convolution Block
-		self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+		self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=2)
 		self.relu2 = nn.ReLU()
-		self.bn2 = nn.BatchNorm2d(num_features=16)
-		init.kaiming_normal_(self.conv2.weight, a=0.1)
-		self.conv2.bias.data.zero_()
-		conv_layers += [self.conv2, self.relu2, self.bn2]
+		self.mp2 = nn.MaxPool2d(kernel_size=2)
+		conv_layers += [self.conv2, self.relu2, self.mp2]
 
 		# Second Convolution Block
-		self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+		self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=2)
 		self.relu3 = nn.ReLU()
-		self.bn3 = nn.BatchNorm2d(num_features=32)
-		init.kaiming_normal_(self.conv3.weight, a=0.1)
-		self.conv3.bias.data.zero_()
-		conv_layers += [self.conv3, self.relu3, self.bn3]
+		self.mp3 = nn.MaxPool2d(kernel_size=2)
+		conv_layers += [self.conv3, self.relu3, self.mp3]
 
 		# Second Convolution Block
-		self.conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+		self.conv4 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=2)
 		self.relu4 = nn.ReLU()
-		self.bn4 = nn.BatchNorm2d(num_features=64)
-		init.kaiming_normal_(self.conv4.weight, a=0.1)
-		self.conv4.bias.data.zero_()
-		conv_layers += [self.conv4, self.relu4, self.bn4]
+		self.mp4 = nn.MaxPool2d(kernel_size=2)
+		conv_layers += [self.conv4, self.relu4, self.mp4]
 
 		# Linear Classifier
-		self.ap = nn.AdaptiveAvgPool2d(output_size=1)
-		self.lin = nn.Linear(in_features=64, out_features=nb_classes)
+		self.flatten = nn.Flatten()
+
+		self.linear = nn.Linear(in_features=128*5*7, out_features=nb_classes)
+		self.softmax = nn.Softmax(dim=1)
 
 		# Wrap the Convolutional Blocks
 		self.conv = nn.Sequential(*conv_layers)
@@ -265,13 +259,13 @@ class AudioClassifier (nn.Module):
 		x = self.conv(x)
 
 		# Adaptive pool and flatten for input to linear layer
-		x = self.ap(x)
-		x = x.view(x.shape[0], -1)
-
-		# Linear layer
-		x = self.lin(x)
+		x = self.flatten(x)
+		x = self.linear(x)
+		x = self.softmax(x)
 
 		return x
 
-	
 
+if __name__== "__main__":
+	cnn = AudioClassifier(49)
+	summary(cnn, (1,64,86))
