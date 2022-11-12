@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
 import os, sys
+
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 import time
 import numpy as np
 import pandas as pd
@@ -20,14 +23,15 @@ import matplotlib.pyplot as plt
 import librosa
 from torchsummary  import summary
 
-class AudioProcessor() :
+class AudioProcessor(nn.Module) :
 	def __init__(self, device, duration, frame_rate, augment=True):
+		super().__init__()
 		self.device = device
 		self.duration = duration
 		self.frame_rate = frame_rate
 		self.augment = augment
 		self.shift_pct = 0.4		
-		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1025, hop_length=512, n_mels=64).to(device)
+		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1025, hop_length=512, n_mels=64)
 	
 	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None):
 		
@@ -38,7 +42,6 @@ class AudioProcessor() :
 		f_audio_duration = int((self.duration*info.sample_rate)/1000.0)
 		f_offset = max(0, int(f_center - f_audio_duration/2))
 		sig, sr = torchaudio.load(audio_file, frame_offset=f_offset, num_frames=f_audio_duration)
-		sig.to(self.device)
 		waveform = (sig, sr)
 		if self.augment is True:
 			waveform = self.time_shift(waveform, self.shift_pct)
@@ -49,8 +52,8 @@ class AudioProcessor() :
 		waveform = self.pad_trunc(waveform, self.duration)
 		
 		sgram = self.spectro_gram(waveform)
-		#if self.augment is True:
-		#	sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
+		if self.augment is True:
+			sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
 
 		return sgram
 		
@@ -220,48 +223,47 @@ class SoundDataSet(AudioProcessor) :
 class AudioClassifier (nn.Module):
 	def __init__(self, nb_classes):
 		super().__init__()
-		conv_layers = []
-		# First Convolution Block with Relu and Batch Norm. Use Kaiming Initialization
-		self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=2)
-		self.relu1 = nn.ReLU()
-		self.mp1 = nn.MaxPool2d(kernel_size=2)
-		conv_layers += [self.conv1, self.relu1, self.mp1]
+		
+		self.conv1 = nn.Sequential (
+			nn.Conv2d(1, 8, kernel_size=5),
+			nn.ReLU(),
+			nn.BatchNorm2d(8)
+		)
 
-		# Second Convolution Block
-		self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=2)
-		self.relu2 = nn.ReLU()
-		self.mp2 = nn.MaxPool2d(kernel_size=2)
-		conv_layers += [self.conv2, self.relu2, self.mp2]
+		self.conv2 = nn.Sequential (
+			nn.Conv2d(8, 16, kernel_size=3),
+			nn.ReLU(),
+			nn.BatchNorm2d(16)
+		)
 
-		# Second Convolution Block
-		self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=2)
-		self.relu3 = nn.ReLU()
-		self.mp3 = nn.MaxPool2d(kernel_size=2)
-		conv_layers += [self.conv3, self.relu3, self.mp3]
+		self.conv3 = nn.Sequential (
+			nn.Conv2d(16, 32, kernel_size=3),
+			nn.ReLU(),
+			nn.BatchNorm2d(32)
+		)
 
-		# Second Convolution Block
-		self.conv4 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=2)
-		self.relu4 = nn.ReLU()
-		self.mp4 = nn.MaxPool2d(kernel_size=2)
-		conv_layers += [self.conv4, self.relu4, self.mp4]
+		self.conv4 = nn.Sequential (
+			nn.Conv2d(32, 64, kernel_size=3),
+			nn.ReLU(),
+			nn.BatchNorm2d(64)
+		)
 
 		# Linear Classifier
-		self.flatten = nn.Flatten()
-
-		self.linear = nn.Linear(in_features=128*5*7, out_features=nb_classes)
-		self.softmax = nn.Softmax(dim=1)
-
-		# Wrap the Convolutional Blocks
-		self.conv = nn.Sequential(*conv_layers)
-
+		self.ap = nn.AdaptiveAvgPool2d(output_size=1)
+		self.lin = nn.Linear(in_features=64, out_features=nb_classes)
+		
 	def forward(self, x):
-		# Run the convolutional blocks
-		x = self.conv(x)
+		x = self.conv1(x)
+		x = self.conv2(x)
+		x = self.conv3(x)
+		x = self.conv4(x)
 
 		# Adaptive pool and flatten for input to linear layer
-		x = self.flatten(x)
-		x = self.linear(x)
-		x = self.softmax(x)
+		x = self.ap(x)
+		x = x.view(x.shape[0], -1)
+
+		# Linear layer
+		x = self.lin(x)
 
 		return x
 

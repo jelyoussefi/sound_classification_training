@@ -21,7 +21,7 @@ def save(model, acc, output_dir):
 	model_path_symblink = os.path.join(output_dir, "model.pth")
 	if os.path.islink(model_path_symblink):
 		os.remove(model_path_symblink)
-	os.symlink(model_path, model_path_symblink)
+	os.symlink(os.path.basename(model_path), model_path_symblink)
 
 def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 
@@ -29,7 +29,7 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 	# Loss Function, Optimizer and Scheduler
 	criterion = nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
-	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001,
+	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
 	                                        	steps_per_epoch=int(len(train_dl)),
 	                                        	epochs=num_epochs,
 	                                        	anneal_strategy='linear')
@@ -79,7 +79,7 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 		writer.add_scalar("Acc/train", acc, epoch)
 		writer.flush()
 		i_acc = int((acc)*100)
-		if i_acc >= 50 and i_acc % 10 == 0 and last_saved_acc != i_acc:
+		if i_acc >= 10 and i_acc % 10 == 0 and last_saved_acc != i_acc:
 			save(model,acc,output_dir)
 			last_saved_acc = i_acc
 
@@ -114,13 +114,8 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 	
-	ds = SoundDataSet(csvFile, device, ratio=0.01)
-
-	model = AudioClassifier(len(ds.classes))
-	model.to(device)
-
-	# Check that it is on Cuda
-	#next(model.parameters()).device
+	ds = SoundDataSet(csvFile, device, ratio=0.01).to(device)
+	model = AudioClassifier(len(ds.classes)).to(device)
 
 	train(model, ds, device, num_epochs=1000, output_dir=output_dir)
 
