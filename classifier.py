@@ -31,7 +31,7 @@ class AudioProcessor(nn.Module) :
 		self.frame_rate = frame_rate
 		self.augment = augment
 		self.shift_pct = 0.4		
-		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1025, hop_length=512, n_mels=64)
+		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1024, hop_length=512, n_mels=64)
 	
 	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None):
 		
