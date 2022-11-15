@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import time
 
-from classifier import SoundDataSet, AudioClassifier
+from classifier import SoundDataSet, CNNAudioClassifier
 
 
 def train(model, ds, device, num_epochs):
@@ -92,7 +92,7 @@ def main(argv):
 	
 	ds = SoundDataSet(csvFile, device, 1.0)
 
-	model = AudioClassifier(len(ds.classes))
+	model = CNNAudioClassifier(len(ds.classes))
 	model.to(device)
 
 	# Check that it is on Cuda
