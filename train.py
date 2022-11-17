@@ -60,7 +60,7 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 			loss = criterion(outputs, labels)
 			loss.backward()
 			optimizer.step()
-			scheduler.step()
+			#scheduler.step()
 
 			# Keep stats for Loss and Accuracy
 			running_loss += loss.item()
