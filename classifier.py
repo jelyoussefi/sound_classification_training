@@ -220,14 +220,9 @@ class SoundDataSet(AudioProcessor) :
                 start_time = self.df.loc[idx, 'start_time']
                 duration = self.df.loc[idx, 'duration']
                 sgram = self.get_spectrum(audio_file, start_time, duration)
-                if self.augment is True:
-                      aug_sgram = self.spectro_augment(
-                         sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
-                else:
-                   aus_sgram = sgram
 		class_id = self.df.loc[idx, 'classID']
 
-		return aug_sgram, class_id
+		return sgram, class_id
 
 	
 class AudioClassifier (nn.Module):
@@ -296,7 +291,7 @@ class CNNAudioclassifier(nn.Module):
         self.conv4 = nn.Sequential( nn.Conv2d( in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=2 ),
                      nn.ReLU(), nn.MaxPool2d(kernel_size=2) )
         self.flatten = nn.Flatten()
-        self.linear = nn.Linear(in_features=7680, out_features=nb_classes)
+        self.linear = nn.Linear(in_features=4480, out_features=nb_classes)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input_data):
