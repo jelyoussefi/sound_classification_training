@@ -190,31 +190,39 @@ class SoundDataSet(AudioProcessor) :
 		self.df['path'] = ds_path + '/' + self.df['path'];
 		if ratio < 1:
 			self.df = self.df.sample(int(len(self.df)*ratio), ignore_index=True)
+	        #-- remove the code ----#	
+		#print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		
-		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
-		
-		sgrams = []
-		st = time.time()
-		for idx in range(len(self.df)):
-			audio_file = self.df.loc[idx, 'path']
-			start_time = self.df.loc[idx, 'start_time']
-			duration   = self.df.loc[idx, 'duration']
-			sgram = self.get_spectrum(audio_file, start_time, duration)
+		#sgrams = []
+		#st = time.time()
+        #	#for idx in range(len(self.df)):
+	#		audio_file = self.df.loc[idx, 'path']
+	#		start_time = self.df.loc[idx, 'start_time']
+	#		duration   = self.df.loc[idx, 'duration']
+	#		sgram = self.get_spectrum(audio_file, start_time, duration)
 			
-			#self.plot_waveform(waveform)
-			#self.plot_specgram(sgram)
+	#		#self.plot_waveform(waveform)
+	#		#self.plot_specgram(sgram)
+        #
+	#		sgrams.append(sgram)
 
-			sgrams.append(sgram)
-
-		print("Done in {} seconds".format(int(time.time() - st)))
-		self.df['sgram'] = sgrams
+	#	print("Done in {} seconds".format(int(time.time() - st)))
+	#	self.df['sgram'] = sgrams
 		
 
 	def __len__(self):
 		return len(self.df)
 
 	def __getitem__(self, idx):
-		aug_sgram = self.df.loc[idx, 'sgram']
+		audio_file = self.df.loc[idx, 'path']
+                start_time = self.df.loc[idx, 'start_time']
+                duration = self.df.loc[idx, 'duration']
+                sgram = self.get_spectrum(audio_file, start_time, duration)
+                if self.augment is True:
+                      aug_sgram = self.spectro_augment(
+                         sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
+                else:
+                   aus_sgram = sgram
 		class_id = self.df.loc[idx, 'classID']
 
 		return aug_sgram, class_id
