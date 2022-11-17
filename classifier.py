@@ -103,8 +103,10 @@ class AudioProcessor(nn.Module) :
 
 	def spectro_gram(self, waveform, n_mels=64, n_fft=1024, hop_len=None):
 		sig,sr = waveform
-
-		spec = self.spectrogram(sig)
+                
+                sig=sig.to(self.device)
+                spec = self.spectrogram.to(self.device)(sig)
+                spect=spec.to(self.device)
 
 		return spec
 
