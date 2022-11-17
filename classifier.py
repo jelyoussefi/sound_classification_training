@@ -274,7 +274,7 @@ class AudioClassifier (nn.Module):
 		x = self.lin(x)
 
 		return x
-class CNNNetwork(nn.Module):
+class CNNAudioclassifier(nn.Module):
     # ----------------------------
     # Introduce the new model architecture
     # ----------------------------
@@ -309,5 +309,5 @@ class CNNNetwork(nn.Module):
 
 
 if __name__== "__main__":
-	cnn = AudioClassifier(49)
+	cnn = CNNAudioClassifier(49)
 	summary(cnn, (1,64,86))

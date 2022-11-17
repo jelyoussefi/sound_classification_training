@@ -7,7 +7,7 @@ from datetime import datetime
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-from classifier import SoundDataSet, AudioClassifier
+from classifier import SoundDataSet, CNNAudioClassifier
 
 
 def save(model, acc, output_dir):
@@ -115,7 +115,7 @@ def main(argv):
 	print("Device : ", device)
 	
 	ds = SoundDataSet(csvFile, device, ratio=0.01).to(device)
-	model = AudioClassifier(len(ds.classes)).to(device)
+	model = CNNAudioClassifier(len(ds.classes)).to(device)
 
 	train(model, ds, device, num_epochs=1000, output_dir=output_dir)
 
