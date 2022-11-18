@@ -192,37 +192,31 @@ class SoundDataSet(AudioProcessor) :
 		self.df['path'] = ds_path + '/' + self.df['path'];
 		if ratio < 1:
 			self.df = self.df.sample(int(len(self.df)*ratio), ignore_index=True)
-	        #-- remove the code ----#	
-		#print("\nCreating {} audio spectrums ... ".format(len(self.df)));
-		
-		#sgrams = []
-		#st = time.time()
-        #	#for idx in range(len(self.df)):
-	#		audio_file = self.df.loc[idx, 'path']
-	#		start_time = self.df.loc[idx, 'start_time']
-	#		duration   = self.df.loc[idx, 'duration']
-	#		sgram = self.get_spectrum(audio_file, start_time, duration)
-			
-	#		#self.plot_waveform(waveform)
-	#		#self.plot_specgram(sgram)
-        #
-	#		sgrams.append(sgram)
 
-	#	print("Done in {} seconds".format(int(time.time() - st)))
-	#	self.df['sgram'] = sgrams
+		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
+		sgrams = []
+		st = time.time()
+                for idx in range(len(self.df)):
+			audio_file = self.df.loc[idx, 'path']
+			start_time = self.df.loc[idx, 'start_time']
+			duration   = self.df.loc[idx, 'duration']
+			sgram = self.get_spectrum(audio_file, start_time, duration)
+			sgrams.append(sgram.cpu())
+			
+			#self.plot_waveform(waveform)
+			#self.plot_specgram(sgram)
+
+		print("Done in {} seconds".format(int(time.time() - st)))
+		self.df['sgram'] = sgrams
 		
 
 	def __len__(self):
 		return len(self.df)
 
 	def __getitem__(self, idx):
-		audio_file = self.df.loc[idx, 'path']
-                start_time = self.df.loc[idx, 'start_time']
-                duration = self.df.loc[idx, 'duration']
-                sgram = self.get_spectrum(audio_file, start_time, duration)
 		class_id = self.df.loc[idx, 'classID']
-
-		return sgram, class_id
+                aug_sgram = self.df.loc[idx, 'sgram']
+		return aug_sgram, class_id
 
 	
 class AudioClassifier (nn.Module):
@@ -271,7 +265,7 @@ class AudioClassifier (nn.Module):
 		x = self.lin(x)
 
 		return x
-class CNNAudioclassifier(nn.Module):
+class CNNAudioClassifier(nn.Module):
     # ----------------------------
     # Introduce the new model architecture
     # ----------------------------
