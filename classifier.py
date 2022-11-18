@@ -105,7 +105,7 @@ class AudioProcessor(nn.Module) :
 		sig,sr = waveform
                 
                 sig=sig.to(self.device)
-		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak)
+		self.spectrogram = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak)
                 spec = self.spectrogram.to(self.device)(sig)
                 spect=spec.to(self.device)
 
@@ -202,7 +202,7 @@ class SoundDataSet(AudioProcessor) :
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
 			maxfreq = self.df.loc[idx, 'frequency_peak']
-                        sgram = self.get_spectrum(audio_file, start_time, duration, maxfeq)
+                        sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq)
 			sgrams.append(sgram.cpu())
 			
 			#self.plot_waveform(waveform)
