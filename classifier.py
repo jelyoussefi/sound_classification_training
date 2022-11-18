@@ -31,7 +31,7 @@ class AudioProcessor(nn.Module) :
 		self.frame_rate = frame_rate
 		self.augment = augment
 		self.shift_pct = 0.4		
-		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1024, hop_length=512, n_mels=64)
+		self.spectrogram = []
 	
 	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None):
 		
@@ -51,7 +51,7 @@ class AudioProcessor(nn.Module) :
 
 		waveform = self.pad_trunc(waveform, self.duration)
 		
-		sgram = self.spectro_gram(waveform)
+		sgram = self.spectro_gram(waveform,freq_peak)
 		if self.augment is True:
 			sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
 
@@ -101,10 +101,11 @@ class AudioProcessor(nn.Module) :
 		shift_amt = int(random.random() * shift_limit * sig_len)
 		return (sig.roll(shift_amt), sr)
 
-	def spectro_gram(self, waveform, n_mels=64, n_fft=1024, hop_len=None):
+	def spectro_gram(self, waveform, n_mels=64, n_fft=1024, hop_len=None, freq_peak=None):
 		sig,sr = waveform
                 
                 sig=sig.to(self.device)
+		self.spectrogram = transforms.MelSpectrogram(sample_rate=frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak)
                 spec = self.spectrogram.to(self.device)(sig)
                 spect=spec.to(self.device)
 
@@ -200,7 +201,8 @@ class SoundDataSet(AudioProcessor) :
 			audio_file = self.df.loc[idx, 'path']
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
-			sgram = self.get_spectrum(audio_file, start_time, duration)
+			maxfreq = self.df.loc[idx, 'frequency_peak']
+                        sgram = self.get_spectrum(audio_file, start_time, duration, maxfeq)
 			sgrams.append(sgram.cpu())
 			
 			#self.plot_waveform(waveform)
