@@ -24,16 +24,15 @@ import librosa
 from torchsummary  import summary
 
 class AudioProcessor(nn.Module) :
-	def __init__(self, device, duration, frame_rate, augment=True):
+	def __init__(self, device, duration, frame_rate):
 		super().__init__()
 		self.device = device
 		self.duration = duration
 		self.frame_rate = frame_rate
-		self.augment = augment
 		self.shift_pct = 0.4		
 		self.spectrogram = []
 	
-	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None):
+	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None, augment=True):
 		
 		info = torchaudio.info(audio_file)
 		f_start_time = (start_time*info.sample_rate)/1000.0
@@ -42,17 +41,17 @@ class AudioProcessor(nn.Module) :
 		f_audio_duration = int((self.duration*info.sample_rate)/1000.0)
 		f_offset = max(0, int(f_center - f_audio_duration/2))
 		sig, sr = torchaudio.load(audio_file, frame_offset=f_offset, num_frames=f_audio_duration)
+		sig = sig.to(self.device)
 		waveform = (sig, sr)
-		if self.augment is True:
+		if augment is True:
 			waveform = self.time_shift(waveform, self.shift_pct)
 
 		waveform = self.resample(waveform, self.frame_rate)
 		waveform = self.down(waveform)
-
 		waveform = self.pad_trunc(waveform, self.duration)
 		
 		sgram = self.spectro_gram(waveform,freq_peak)
-		if self.augment is True:
+		if augment is True:
 			sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
 
 		return sgram
@@ -88,8 +87,8 @@ class AudioProcessor(nn.Module) :
 			pad_begin_len = random.randint(0, max_len - sig_len)
 			pad_end_len = max_len - sig_len - pad_begin_len
 			# Pad with 0s
-			pad_begin = torch.zeros((num_rows, pad_begin_len))
-			pad_end = torch.zeros((num_rows, pad_end_len))
+			pad_begin = torch.zeros((num_rows, pad_begin_len)).to(self.device)
+			pad_end = torch.zeros((num_rows, pad_end_len)).to(self.device)
 
 			sig = torch.cat((pad_begin, sig, pad_end), 1)
 
@@ -104,10 +103,8 @@ class AudioProcessor(nn.Module) :
 	def spectro_gram(self, waveform, n_mels=64, n_fft=1024, hop_len=None, freq_peak=None):
 		sig,sr = waveform
                 
-                sig=sig.to(self.device)
-		self.spectrogram = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak)
-                spec = self.spectrogram.to(self.device)(sig)
-                spect=spec.to(self.device)
+		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak).to(self.device)(sig)
+		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
 		return spec
 
@@ -159,9 +156,7 @@ class AudioProcessor(nn.Module) :
 		#waveform = waveform.numpy()
 		num_channels, num_frames = waveform.shape
 		if num_channels == 1:
-			print("play_audio 1")
 			display(Audio(waveform[0], rate=sample_rate))
-			print("play_audio 2")
 		elif num_channels == 2:
 			display(Audio((waveform[0], waveform[1]), rate=sample_rate))
 		else:
@@ -197,12 +192,12 @@ class SoundDataSet(AudioProcessor) :
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		sgrams = []
 		st = time.time()
-                for idx in range(len(self.df)):
+		for idx in range(len(self.df)):
 			audio_file = self.df.loc[idx, 'path']
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
 			maxfreq = self.df.loc[idx, 'frequency_peak']
-                        sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq)
+			sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq)
 			sgrams.append(sgram.cpu())
 			
 			#self.plot_waveform(waveform)
@@ -217,8 +212,9 @@ class SoundDataSet(AudioProcessor) :
 
 	def __getitem__(self, idx):
 		class_id = self.df.loc[idx, 'classID']
-                aug_sgram = self.df.loc[idx, 'sgram']
-		return aug_sgram, class_id
+		sgram = self.df.loc[idx, 'sgram']
+		self.plot_specgram(sgram)
+		return sgram, class_id
 
 	
 class AudioClassifier (nn.Module):
