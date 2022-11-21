@@ -53,7 +53,6 @@ class AudioProcessor(nn.Module) :
 		sgram = self.spectro_gram(waveform,freq_peak)
 		if augment is True:
 			sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
-
 		return sgram
 		
 
@@ -104,6 +103,7 @@ class AudioProcessor(nn.Module) :
 		sig,sr = waveform
                 
 		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak).to(self.device)(sig)
+
 		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
 		return spec
@@ -165,7 +165,7 @@ class AudioProcessor(nn.Module) :
 
 class SoundDataSet(AudioProcessor) :
 	def __init__(self, metadata_file, device, labels_file=None, ratio=1):
-		super().__init__(device, duration=1000, frame_rate=44100)
+		super().__init__(device, duration=4000, frame_rate=44100)
 		
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
 		self.df.head()
@@ -213,7 +213,6 @@ class SoundDataSet(AudioProcessor) :
 	def __getitem__(self, idx):
 		class_id = self.df.loc[idx, 'classID']
 		sgram = self.df.loc[idx, 'sgram']
-		self.plot_specgram(sgram)
 		return sgram, class_id
 
 	
@@ -283,7 +282,7 @@ class CNNAudioClassifier(nn.Module):
         self.conv4 = nn.Sequential( nn.Conv2d( in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=2 ),
                      nn.ReLU(), nn.MaxPool2d(kernel_size=2) )
         self.flatten = nn.Flatten()
-        self.linear = nn.Linear(in_features=4480, out_features=nb_classes)
+        self.linear = nn.Linear(in_features=128*5*23, out_features=nb_classes)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input_data):
@@ -299,4 +298,4 @@ class CNNAudioClassifier(nn.Module):
 
 if __name__== "__main__":
 	cnn = CNNAudioClassifier(49)
-	summary(cnn, (1,64,86))
+	summary(cnn, (1,64,344))
