@@ -29,7 +29,7 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 	# Loss Function, Optimizer and Scheduler
 	criterion = nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
-	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
+	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001,
 	                                        	steps_per_epoch=int(len(train_dl)),
 	                                        	epochs=num_epochs,
 	                                        	anneal_strategy='linear')
@@ -60,7 +60,7 @@ def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 			loss = criterion(outputs, labels)
 			loss.backward()
 			optimizer.step()
-			#scheduler.step()
+			scheduler.step()
 
 			# Keep stats for Loss and Accuracy
 			running_loss += loss.item()
