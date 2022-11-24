@@ -4,8 +4,12 @@ import os, sys, getopt
 import time
 from datetime import datetime
 
+import numpy as np
 import torch
 from torch import nn
+import torch.optim as optim
+from tqdm import tqdm
+from torchvision.models import resnet34
 from torch.utils.tensorboard import SummaryWriter
 from classifier import SoundDataSet, CNNAudioClassifier
 
@@ -23,78 +27,62 @@ def save(model, acc, output_dir):
 		os.remove(model_path_symblink)
 	os.symlink(os.path.basename(model_path), model_path_symblink)
 
-def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
+def lr_decay(optimizer, epoch):
+	if epoch%10==0:
+		new_lr = learning_rate / (10**(epoch//10))
+		optimizer = setlr(optimizer, new_lr)
+		print(f'Changed learning rate to {new_lr}')
+	return optimizer
 
-	train_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
-	# Loss Function, Optimizer and Scheduler
-	criterion = nn.CrossEntropyLoss()
-	optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
-	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001,
-	                                        	steps_per_epoch=int(len(train_dl)),
-	                                        	epochs=num_epochs,
-	                                        	anneal_strategy='linear')
+def train(model, device, loss_fn, train_ds, valid_ds, epochs, optimizer, train_losses, valid_losses, change_lr=None):
+	
+	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
+	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
 
-	writer = SummaryWriter()
-	last_saved_acc = 0
+	for epoch in tqdm(range(1,epochs+1)):
+		model.train()
+		batch_losses=[]
+		if change_lr:
+			optimizer = change_lr(optimizer, epoch)
 
-	# Repeat for each epoch
-	for epoch in range(num_epochs):
-		running_loss = 0.0
-		correct_prediction = 0
-		total_prediction = 0
-
-		# Repeat for each batch in the training set
-		for i, data in enumerate(train_dl):
-			# Get the input features and target labels, and put them on the GPU
-			inputs, labels = data[0].to(device), data[1].to(device)
-
-			# Normalize the inputs
-			inputs_m, inputs_s = inputs.mean(), inputs.std()
-			inputs = (inputs - inputs_m) / inputs_s
-
-			# Zero the parameter gradients
+		for i, data in enumerate(train_loader):
+			x, y = data
 			optimizer.zero_grad()
-
-			# forward + backward + optimize
-			outputs = model(inputs)
-			loss = criterion(outputs, labels)
+			x = x.to(device, dtype=torch.float32)
+			y = y.to(device, dtype=torch.long)
+			y_hat = model(x)
+			loss = loss_fn(y_hat, y)
 			loss.backward()
+			batch_losses.append(loss.item())
 			optimizer.step()
-			scheduler.step()
+		train_losses.append(batch_losses)
+		print(f'Epoch - {epoch} Train-Loss : {np.mean(train_losses[-1]):.2f}')
+		model.eval()
+		batch_losses=[]
+		trace_y = []
+		trace_yhat = []
 
-			# Keep stats for Loss and Accuracy
-			running_loss += loss.item()
+		for i, data in enumerate(valid_loader):
+			x, y = data
+			x = x.to(device, dtype=torch.float32)
+			y = y.to(device, dtype=torch.long)
+			y_hat = model(x)
+			loss = loss_fn(y_hat, y)
+			trace_y.append(y.cpu().detach().numpy())
+			trace_yhat.append(y_hat.cpu().detach().numpy())      
+			batch_losses.append(loss.item())
+		valid_losses.append(batch_losses)
+		trace_y = np.concatenate(trace_y)
+		trace_yhat = np.concatenate(trace_yhat)
+		accuracy = np.mean(trace_yhat.argmax(axis=1)==trace_y)
+		print(f'Epoch - {epoch} Valid-Loss : {np.mean(valid_losses[-1]):.2f} Valid-Accuracy : {accuracy:.2f}')
 
-			# Get the predicted class with the highest score
-			_, prediction = torch.max(outputs,1)
-			# Count of predictions that matched the target label
-			correct_prediction += (prediction == labels).sum().item()
-			total_prediction += prediction.shape[0]
-
-
-		# Print stats at the end of the epoch
-		num_batches = len(train_dl)
-		avg_loss = running_loss / num_batches
-		acc = correct_prediction/total_prediction
-		writer.add_scalar("Acc/train", acc, epoch)
-		writer.flush()
-		i_acc = int((acc)*100)
-		if i_acc >= 10 and i_acc % 10 == 0 and last_saved_acc != i_acc:
-			save(model,acc,output_dir)
-			last_saved_acc = i_acc
-
-		print(f'Epoch: {epoch}, Loss: {avg_loss:.2f}, Accuracy: {acc:.2f}')
-		if acc >= threshold :
-			save(model,acc,output_dir)
-			break;
-
-	writer.close()
-
-	print('Finished Training')
 
 def main(argv):
 
-	csvFile = "./dataset/training/config.csv"
+	train_csv_file = "./dataset/training/config.csv"
+	valid_csv_file = "./dataset/validation/config.csv"
+
 	output_dir = "./model"
 
 	try:
@@ -113,11 +101,26 @@ def main(argv):
 
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
-	
-	ds = SoundDataSet(csvFile, device, ratio=0.01).to(device)
-	model = CNNAudioClassifier(len(ds.classes)).to(device)
 
-	train(model, ds, device, num_epochs=1000, output_dir=output_dir)
+	train_ds = SoundDataSet(train_csv_file, device, max_value=2000).to(device)
+	valid_ds = SoundDataSet(valid_csv_file, device, labels_file="./classes.txt",  max_value=200).to(device)
+
+	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
+	model.fc = nn.Linear(512,len(train_ds.classes))
+	model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+	model = model.to(device)
+
+	#----------------------------------------------------------------------------------------
+	learning_rate = 2e-4
+	optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+	loss_fn = nn.CrossEntropyLoss()
+	epochs = 50
+	resnet_train_losses=[]
+	resnet_valid_losses=[]
+
+	#----------------------------------------------------------------------------------------
+	
+	train(model, device, loss_fn, train_ds, valid_ds, epochs, optimizer, resnet_train_losses, resnet_valid_losses, lr_decay)
 
 
 if __name__ == "__main__":

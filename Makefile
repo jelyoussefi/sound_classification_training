@@ -19,8 +19,9 @@ install_prerequisite:
 train:
 	@$(call msg, Training the Audio Classification Model   ...)
 	@rm -rf ./model/*
-	@python3 ./train.py -o "./model"
+	@python3 ./train.py -c ./dataset/training/config.csv -o "./model"
 
+	#@python3 ./train.py -c ./dataset/training/config_12class_evenspread.csv -o "./model"
 valid:
 	@$(call msg, Validating the Audio Classification Model   ...)
 	@python3 ./valid.py -m ./model/model.pth

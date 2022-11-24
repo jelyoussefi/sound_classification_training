@@ -30,9 +30,9 @@ class AudioProcessor(nn.Module) :
 		self.duration = duration
 		self.frame_rate = frame_rate
 		self.shift_pct = 0.4		
-		self.spectrogram = []
 	
-	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None, augment=True):
+
+	def get_spectrum(self, audio_file, start_time, duration, freq_peak=None, augment=False):
 		
 		info = torchaudio.info(audio_file)
 		f_start_time = (start_time*info.sample_rate)/1000.0
@@ -99,10 +99,10 @@ class AudioProcessor(nn.Module) :
 		shift_amt = int(random.random() * shift_limit * sig_len)
 		return (sig.roll(shift_amt), sr)
 
-	def spectro_gram(self, waveform, n_mels=64, n_fft=1024, hop_len=None, freq_peak=None):
+	def spectro_gram(self, waveform, freq_peak=None):
 		sig,sr = waveform
                 
-		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64, f_max=freq_peak).to(self.device)(sig)
+		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig)
 
 		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
@@ -163,16 +163,17 @@ class AudioProcessor(nn.Module) :
 			raise ValueError("Waveform with more than 2 channels are not supported.")
 
 
+
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, metadata_file, device, labels_file=None, ratio=1):
+	def __init__(self, metadata_file, device, labels_file=None, max_value=None):
 		super().__init__(device, duration=1000, frame_rate=44100)
 		
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
 		self.df.head()
 
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
-		self.df['classID'] = np.array([c.split('--')[0] for c in self.df['path']])
-
+		self.df['classID'] = np.array([c.split('-')[0] for c in self.df['path']])
+		
 		if labels_file is None:
 			self.classes = np.unique(self.df['classID'])
 
@@ -181,13 +182,21 @@ class SoundDataSet(AudioProcessor) :
 		else:
 			with open(labels_file) as f:
 				self.classes = np.array(f.read().splitlines())
-				print(self.classes)
+				ds_classes = np.unique(self.df['classID'])
+				diff = list(set(ds_classes) - set(self.classes))
+				for cl in diff:
+					self.df = self.df.loc[self.df['classID'] != cl ]
 
-
-		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']])
+		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']], dtype=object)
 		self.df['path'] = ds_path + '/' + self.df['path'];
-		if ratio < 1:
-			self.df = self.df.sample(int(len(self.df)*ratio), ignore_index=True)
+		
+		if max_value is not None:
+			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
+			self.df = self.df.groupby("classID").sample(n=max_value, replace=False, random_state=1)
+			self.df = self.df.sample(frac=1, ignore_index=True)
+
+		#np.set_printoptions(linewidth=2000) 
+		#print(np.array(self.df['classID'].value_counts()))
 
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		sgrams = []
@@ -197,11 +206,8 @@ class SoundDataSet(AudioProcessor) :
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
 			maxfreq = self.df.loc[idx, 'frequency_peak']
-			sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq)
+			sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq, True)
 			sgrams.append(sgram.cpu())
-			
-			#self.plot_waveform(waveform)
-			#self.plot_specgram(sgram)
 
 		print("Done in {} seconds".format(int(time.time() - st)))
 		self.df['sgram'] = sgrams
@@ -211,6 +217,7 @@ class SoundDataSet(AudioProcessor) :
 		return len(self.df)
 
 	def __getitem__(self, idx):
+
 		class_id = self.df.loc[idx, 'classID']
 		sgram = self.df.loc[idx, 'sgram']
 		return sgram, class_id
