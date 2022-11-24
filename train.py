@@ -91,7 +91,7 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			# forward pass
 			outputs = model(image)
 			# calculate the loss
-			loss = criterion(outputs, labels)
+			loss = loss_fn(outputs, labels)
 			valid_running_loss += loss.item()
 			# calculate the accuracy
 			_, preds = torch.max(outputs.data, 1)
