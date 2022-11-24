@@ -141,7 +141,7 @@ def main(argv):
 	print("Device : ", device)
 
 	train_ds = SoundDataSet(train_csv_file, device, max_value=1000).to(device)
-	valid_ds = SoundDataSet(valid_csv_file, device, labels_file="./classes.txt",  max_value=10).to(device)
+	valid_ds = SoundDataSet(valid_csv_file, device, labels_file="./classes.txt",  max_value=200).to(device)
 
 	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
 	model.fc = nn.Linear(512,len(train_ds.classes))
