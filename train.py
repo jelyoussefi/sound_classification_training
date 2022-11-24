@@ -71,7 +71,7 @@ def train(model, device, train_loader, optimizer, loss_fn):
 
 		return epoch_loss, epoch_acc 
 
-def validate(model, valid_loader, loss_fn, class_names):
+def validate(model, device, valid_loader, loss_fn, class_names):
 	model.eval()
 	valid_running_loss = 0.0
 	valid_running_correct = 0
