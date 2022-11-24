@@ -162,7 +162,7 @@ def main(argv):
 	    print(f"Epoch {epoch+1} of {epochs}")
 	    train_loss, train_acc = train(model, device, train_loader, optimizer, criterion)
 	    valid_loss, valid_acc = validate(model, device, valid_loader, criterion, classes)
-	    print(f'\tAccuracy\t train : {acc:.2f}, valid: {valid_acc:.2f}')
+	    print(f'\tAccuracy\t train : {train_acc:.2f}, valid: {valid_acc:.2f}')
 
 
 
