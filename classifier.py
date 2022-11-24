@@ -177,7 +177,6 @@ class SoundDataSet(AudioProcessor) :
 		if max_value is not None:
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
 			self.df = self.df.groupby("classID").sample(n=max_value, replace=False, random_state=1)
-			self.df = self.df.sample(frac=1, ignore_index=True)
 
 
 		if labels_file is None:
@@ -193,12 +192,13 @@ class SoundDataSet(AudioProcessor) :
 				for cl in diff:
 					self.df = self.df.loc[self.df['classID'] != cl ]
 
+		self.df = self.df.sample(frac=1, ignore_index=True)
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']], dtype=object)
 		self.df['path'] = ds_path + '/' + self.df['path'];
 		
 		
-		#np.set_printoptions(linewidth=2000) 
-		#print(np.array(self.df['classID'].value_counts()))
+		np.set_printoptions(linewidth=2000) 
+		print(np.array(self.df['classID'].value_counts()))
 
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		sgrams = []
