@@ -108,11 +108,11 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 	epoch_loss = valid_running_loss / counter
 	epoch_acc = 100. * (valid_running_correct / len(valid_loader.dataset))
 
-    # print the accuracy for each class after every epoch
-	print('\n')
-	for i in range(len(class_names)):
-			print(f"Accuracy of class {class_names[i]}: {100*class_correct[i]/class_total[i]}")
-	print('\n')
+   # print the accuracy for each class after every epoch
+	#print('\n')
+	#for i in range(len(class_names)):
+	#		print(f"Accuracy of class {class_names[i]}: {100*class_correct[i]/class_total[i]}")
+	#print('\n')
         
 	return epoch_loss, epoch_acc
 
