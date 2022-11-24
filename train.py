@@ -34,49 +34,87 @@ def lr_decay(optimizer, epoch):
 		print(f'Changed learning rate to {new_lr}')
 	return optimizer
 
-def train(model, device, loss_fn, train_ds, valid_ds, epochs, optimizer, train_losses, valid_losses, change_lr=None):
-	
-	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
-	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
 
-	for epoch in tqdm(range(1,epochs+1)):
+def train(model, device, train_loader, optimizer, loss_fn):
+
 		model.train()
-		batch_losses=[]
-		if change_lr:
-			optimizer = change_lr(optimizer, epoch)
-
-		for i, data in enumerate(train_loader):
-			x, y = data
+		train_running_loss = 0.0
+		train_running_correct = 0
+		counter = 0
+		for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
+			counter += 1
+			image, labels = data
 			optimizer.zero_grad()
-			x = x.to(device, dtype=torch.float32)
-			y = y.to(device, dtype=torch.long)
-			y_hat = model(x)
-			loss = loss_fn(y_hat, y)
+			image = image.to(device, dtype=torch.float32)
+			labels = labels.to(device, dtype=torch.long)
+			
+			# forward pass
+			outputs = model(image)
+			
+			# calculate the loss
+			loss = loss_fn(outputs, labels)
+			train_running_loss += loss.item()
+			
+			 # calculate the accuracy
+			_, preds = torch.max(outputs.data, 1)
+			train_running_correct += (preds == labels).sum().item()
+			
+			# backpropagation			
 			loss.backward()
-			batch_losses.append(loss.item())
+
+			# update the optimizer parameters
 			optimizer.step()
-		train_losses.append(batch_losses)
-		print(f'Epoch - {epoch} Train-Loss : {np.mean(train_losses[-1]):.2f}')
-		model.eval()
-		batch_losses=[]
-		trace_y = []
-		trace_yhat = []
 
-		for i, data in enumerate(valid_loader):
-			x, y = data
-			x = x.to(device, dtype=torch.float32)
-			y = y.to(device, dtype=torch.long)
-			y_hat = model(x)
-			loss = loss_fn(y_hat, y)
-			trace_y.append(y.cpu().detach().numpy())
-			trace_yhat.append(y_hat.cpu().detach().numpy())      
-			batch_losses.append(loss.item())
-		valid_losses.append(batch_losses)
-		trace_y = np.concatenate(trace_y)
-		trace_yhat = np.concatenate(trace_yhat)
-		accuracy = np.mean(trace_yhat.argmax(axis=1)==trace_y)
-		print(f'Epoch - {epoch} Valid-Loss : {np.mean(valid_losses[-1]):.2f} Valid-Accuracy : {accuracy:.2f}')
+		# loss and accuracy for the complete epoch
+		epoch_loss = train_running_loss / counter
+		epoch_acc = 100. * (train_running_correct / len(train_loader.dataset))
 
+		return epoch_loss, epoch_acc 
+
+def validate(model, valid_loader, loss_fn, class_names):
+	model.eval()
+	valid_running_loss = 0.0
+	valid_running_correct = 0
+	counter = 0
+
+	# we need two lists to keep track of class-wise accuracy
+	class_correct = list(0. for i in range(len(class_names)))
+	class_total = list(0. for i in range(len(class_names)))
+
+	with torch.no_grad():
+		for i, data in tqdm(enumerate(valid_loader), total=len(valid_loader)):
+			counter += 1
+            
+			image, labels = data
+			image = image.to(device)
+			labels = labels.to(device)
+			# forward pass
+			outputs = model(image)
+			# calculate the loss
+			loss = criterion(outputs, labels)
+			valid_running_loss += loss.item()
+			# calculate the accuracy
+			_, preds = torch.max(outputs.data, 1)
+			valid_running_correct += (preds == labels).sum().item()
+
+			# calculate the accuracy for each class
+			correct  = (preds == labels).squeeze()
+			for i in range(len(preds)):
+				label = labels[i]
+				class_correct[label] += correct[i].item()
+				class_total[label] += 1
+        
+	# loss and accuracy for the complete epoch
+	epoch_loss = valid_running_loss / counter
+	epoch_acc = 100. * (valid_running_correct / len(valid_loader.dataset))
+
+    # print the accuracy for each class after every epoch
+	print('\n')
+	for i in range(len(class_names)):
+			print(f"Accuracy of class {class_names[i]}: {100*class_correct[i]/class_total[i]}")
+	print('\n')
+        
+	return epoch_loss, epoch_acc
 
 def main(argv):
 
@@ -102,8 +140,8 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	train_ds = SoundDataSet(train_csv_file, device, max_value=2000).to(device)
-	valid_ds = SoundDataSet(valid_csv_file, device, labels_file="./classes.txt",  max_value=200).to(device)
+	train_ds = SoundDataSet(train_csv_file, device, max_value=1000).to(device)
+	valid_ds = SoundDataSet(valid_csv_file, device, labels_file="./classes.txt",  max_value=10).to(device)
 
 	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
 	model.fc = nn.Linear(512,len(train_ds.classes))
@@ -111,16 +149,22 @@ def main(argv):
 	model = model.to(device)
 
 	#----------------------------------------------------------------------------------------
-	learning_rate = 2e-4
-	optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-	loss_fn = nn.CrossEntropyLoss()
+	lr = 0.001
 	epochs = 50
-	resnet_train_losses=[]
-	resnet_valid_losses=[]
+	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
+	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
+	optimizer = optim.Adam(model.parameters(), lr=lr)
+	criterion = nn.CrossEntropyLoss()
+	classes = np.array([np.where(train_ds.classes==c)[0] for c in train_ds.classes], dtype=object)
+	writer = SummaryWriter()
 
-	#----------------------------------------------------------------------------------------
-	
-	train(model, device, loss_fn, train_ds, valid_ds, epochs, optimizer, resnet_train_losses, resnet_valid_losses, lr_decay)
+	for epoch in range(epochs):
+	    print(f"Epoch {epoch+1} of {epochs}")
+	    train_loss, train_acc = train(model, device, train_loader, optimizer, criterion)
+	    valid_loss, valid_acc = validate(model, device, valid_loader, criterion, classes)
+	    print(f'\tAccuracy\t train : {acc:.2f}, valid: {valid_acc:.2f}')
+
+
 
 
 if __name__ == "__main__":
