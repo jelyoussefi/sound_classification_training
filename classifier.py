@@ -174,6 +174,12 @@ class SoundDataSet(AudioProcessor) :
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['classID'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
+		if max_value is not None:
+			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
+			self.df = self.df.groupby("classID").sample(n=max_value, replace=False, random_state=1)
+			self.df = self.df.sample(frac=1, ignore_index=True)
+
+
 		if labels_file is None:
 			self.classes = np.unique(self.df['classID'])
 
@@ -190,11 +196,7 @@ class SoundDataSet(AudioProcessor) :
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']], dtype=object)
 		self.df['path'] = ds_path + '/' + self.df['path'];
 		
-		if max_value is not None:
-			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
-			self.df = self.df.groupby("classID").sample(n=max_value, replace=False, random_state=1)
-			self.df = self.df.sample(frac=1, ignore_index=True)
-
+		
 		#np.set_printoptions(linewidth=2000) 
 		#print(np.array(self.df['classID'].value_counts()))
 
