@@ -169,14 +169,14 @@ class SoundDataSet(AudioProcessor) :
 		super().__init__(device, duration=1000, frame_rate=44100)
 		
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
-		self.df.head()
-
+		self.df.head()		
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['classID'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
+		self.df = self.df.sort_values(by=['duration'], ascending=False)
 		if max_value is not None:
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
-			self.df = self.df.groupby("classID").sample(n=max_value, replace=False, random_state=1)
+			self.df = self.df.groupby("classID").head(max_value)
 
 
 		if labels_file is None:

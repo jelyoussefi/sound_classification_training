@@ -15,12 +15,12 @@ from torch.utils.tensorboard import SummaryWriter
 from classifier import SoundDataSet, CNNAudioClassifier
 
 
-def save(model, acc, output_dir):
+def save(model, output_dir):
 	acc = int(acc*100)
 	if not os.path.exists(output_dir):
 		os.makedirs(output_dir)
 	date_time = datetime.now().strftime("%d_%m_%Y_%H_%M")
-	model_path=os.path.join(output_dir,"model_"+date_time+"_acc-"+str(acc)+".pth")
+	model_path=os.path.join(output_dir,"model_"+date_time+".pth")
 	print("\nSaving ", model_path, " model ...\n")
 	torch.save(model, model_path)
 	model_path_symblink = os.path.join(output_dir, "model.pth")
@@ -121,9 +121,7 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 
 def main(argv):
 
-	train_csv_file = "./dataset/training/config.csv"
-	valid_csv_file = "./dataset/validation/config.csv"
-
+	csv_file = "./dataset/training/config.csv"
 	output_dir = "./model"
 
 	try:
@@ -136,14 +134,14 @@ def main(argv):
 			print("{} -c <csv file>".format(argv[0]))
 			sys.exit()
 		elif opt in ("-c", "--config"):
-			csvFile = arg
+			csv_file = arg
 		elif opt in ("-o", "--ouput_dir"):
 			output_dir = arg
 
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(train_csv_file, device, max_value=1000).to(device)
+	ds = SoundDataSet(csv_file, device, max_value=1000).to(device)
 	print(len(ds.classes))
 	num_items = len(ds)
 	num_train = round(num_items * 0.8)
@@ -166,13 +164,22 @@ def main(argv):
 	writer = SummaryWriter()
 
 	for epoch in range(epochs):
-	    print(f"Epoch {epoch+1} of {epochs}")
-	    train_loss, train_acc = train(model, device, train_loader, optimizer, criterion)
-	    valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
-	    print(f'\tAccuracy\t train : {train_acc:.2f}, valid: {valid_acc:.2f}')
+		print(f"Epoch {epoch+1} of {epochs}")
+		train_loss, train_acc = train(model, device, train_loader, optimizer, criterion)
+		valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
+		print(f'\tAccuracy\t train : {train_acc:.2f}, valid: {valid_acc:.2f}')
 
+		writer.add_scalar("Acc/train", train_acc, epoch)
+		writer.add_scalar("Acc/valid", valid_acc, epoch)
 
+		writer.flush()
 
+		if train_acc > 99:
+			break;
+
+	save(model,output_dir)
+	writer.close()
+	print('Finished Training')
 
 if __name__ == "__main__":
    main(sys.argv)

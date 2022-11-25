@@ -18,7 +18,7 @@ install_prerequisite:
 
 train:
 	@$(call msg, Training the Audio Classification Model   ...)
-	@rm -rf ./model/*
+	@rm -rf ./runs
 	@python3 ./train.py -c ./dataset/training/config.csv -o "./model"
 
 	#@python3 ./train.py -c ./dataset/training/config_12class_evenspread.csv -o "./model"
@@ -36,6 +36,11 @@ docker-train: docker-build
 	@$(call msg, Traing with docker image ${DOCKER_IMAGE_NAME} ...)
 	@docker run -it --rm -a stdout -a stderr -v ${CURRENT_DIR}:/workspace -v /data:/data -w /workspace --gpus all ${DOCKER_IMAGE_NAME}  \
 		make
+
+monitor:
+	@$(call msg, Monitoring ...)
+	@tensorboard --logdir=runs --bind_all
+
 #----------------------------------------------------------------------------------------------------------------------
 # helper functions
 #----------------------------------------------------------------------------------------------------------------------
