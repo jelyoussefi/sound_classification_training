@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.optim as optim
+from torch.utils.data import random_split
 from tqdm import tqdm
 from torchvision.models import resnet34
 from torch.utils.tensorboard import SummaryWriter
@@ -108,11 +109,11 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 	epoch_loss = valid_running_loss / counter
 	epoch_acc = 100. * (valid_running_correct / len(valid_loader.dataset))
 
-   # print the accuracy for each class after every epoch
-	#print('\n')
-	#for i in range(len(class_names)):
-	#		print(f"Accuracy of class {class_names[i]}: {100*class_correct[i]/class_total[i]}")
-	#print('\n')
+	print('-----------------------------------------------------------------------------')
+	for i in range(len(class_names)):
+		if class_total[i] != 0:
+			print(f"Accuracy of class {class_names[i]}: {100*class_correct[i]/class_total[i]}")
+	print('-----------------------------------------------------------------------------')
         
 	return epoch_loss, epoch_acc
 
@@ -140,11 +141,15 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	train_ds = SoundDataSet(train_csv_file, device, max_value=1000).to(device)
-	valid_ds = SoundDataSet(valid_csv_file, device, labels_file="./classes.txt",  max_value=200).to(device)
+	ds = SoundDataSet(train_csv_file, device, max_value=200).to(device)
+	print(len(ds.classes))
+	num_items = len(ds)
+	num_train = round(num_items * 0.8)
+	num_val = num_items - num_train
+	train_ds, valid_ds = random_split(ds, [num_train, num_val])
 
 	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
-	model.fc = nn.Linear(512,len(train_ds.classes))
+	model.fc = nn.Linear(512,len(ds.classes))
 	model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 	model = model.to(device)
 
@@ -155,13 +160,13 @@ def main(argv):
 	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
 	optimizer = optim.Adam(model.parameters(), lr=lr)
 	criterion = nn.CrossEntropyLoss()
-	classes = np.array([np.where(train_ds.classes==c)[0] for c in train_ds.classes], dtype=object)
+	#classes = np.array([np.where(train_ds.classes==c)[0] for c in train_ds.classes], dtype=object)
 	writer = SummaryWriter()
 
 	for epoch in range(epochs):
 	    print(f"Epoch {epoch+1} of {epochs}")
 	    train_loss, train_acc = train(model, device, train_loader, optimizer, criterion)
-	    valid_loss, valid_acc = validate(model, device, valid_loader, criterion, classes)
+	    valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
 	    print(f'\tAccuracy\t train : {train_acc:.2f}, valid: {valid_acc:.2f}')
 
 
