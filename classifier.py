@@ -20,6 +20,7 @@ import torchaudio
 from torchaudio import transforms
 from IPython.display import Audio, display
 import matplotlib.pyplot as plt
+from torchvision.models import resnet34
 import librosa
 from torchsummary  import summary
 
@@ -225,86 +226,18 @@ class SoundDataSet(AudioProcessor) :
 		return sgram, class_id
 
 	
-class AudioClassifier (nn.Module):
-	def __init__(self, nb_classes):
-		super().__init__()
-		
-		self.conv1 = nn.Sequential (
-			nn.Conv2d(1, 8, kernel_size=5),
-			nn.ReLU(),
-			nn.BatchNorm2d(8)
-		)
-
-		self.conv2 = nn.Sequential (
-			nn.Conv2d(8, 16, kernel_size=3),
-			nn.ReLU(),
-			nn.BatchNorm2d(16)
-		)
-
-		self.conv3 = nn.Sequential (
-			nn.Conv2d(16, 32, kernel_size=3),
-			nn.ReLU(),
-			nn.BatchNorm2d(32)
-		)
-
-		self.conv4 = nn.Sequential (
-			nn.Conv2d(32, 64, kernel_size=3),
-			nn.ReLU(),
-			nn.BatchNorm2d(64)
-		)
-
-		# Linear Classifier
-		self.ap = nn.AdaptiveAvgPool2d(output_size=1)
-		self.lin = nn.Linear(in_features=64, out_features=nb_classes)
-		
-	def forward(self, x):
-		x = self.conv1(x)
-		x = self.conv2(x)
-		x = self.conv3(x)
-		x = self.conv4(x)
-
-		# Adaptive pool and flatten for input to linear layer
-		x = self.ap(x)
-		x = x.view(x.shape[0], -1)
-
-		# Linear layer
-		x = self.lin(x)
-
-		return x
-class CNNAudioClassifier(nn.Module):
+def ResnetCNN(nb_classes,device):
     # ----------------------------
     # Introduce the new model architecture
     # ----------------------------
-    def __init__(self,nb_classes):
-        super().__init__()
-
-        # 4 CNN block / flatten / linear / softmax
-        self.conv1 = nn.Sequential(
-                     nn.Conv2d( in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=2 ),
-                     nn.ReLU(), nn.MaxPool2d(kernel_size=2) )
-        self.conv2 = nn.Sequential(
-                     nn.Conv2d( in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=2 ),
-                     nn.ReLU(), nn.MaxPool2d(kernel_size=2) )
-        self.conv3 = nn.Sequential(
-                     nn.Conv2d( in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=2 ),
-                     nn.ReLU(), nn.MaxPool2d(kernel_size=2) )
-        self.conv4 = nn.Sequential( nn.Conv2d( in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=2 ),
-                     nn.ReLU(), nn.MaxPool2d(kernel_size=2) )
-        self.flatten = nn.Flatten()
-        self.linear = nn.Linear(in_features=128*5*7, out_features=nb_classes)
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(self, input_data):
-        x = self.conv1(input_data)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.flatten(x)
-        logits = self.linear(x)
-        predictions = self.softmax(logits)
-        return predictions
+        # RESET 34 Pretrained weights 
+        model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
+        model.fc = nn.Linear(512,nb_classes)
+        model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        model = model.to(device)
+        return model
 
 
 if __name__== "__main__":
-	cnn = CNNAudioClassifier(49)
+	cnn = ResnetCNN(49,torch.device("cuda:0"))
 	summary(cnn, (1,64,86))

@@ -12,10 +12,10 @@ from torch.utils.data import random_split
 from tqdm import tqdm
 from torchvision.models import resnet34
 from torch.utils.tensorboard import SummaryWriter
-from classifier import SoundDataSet, CNNAudioClassifier
+from classifier import SoundDataSet, ResnetCNN
 
 
-def save(model, output_dir):
+def save(model, acc, output_dir):
 	acc = int(acc*100)
 	if not os.path.exists(output_dir):
 		os.makedirs(output_dir)
@@ -120,7 +120,6 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 	return epoch_loss, epoch_acc
 
 def main(argv):
-
 	csv_file = "./dataset/training/config.csv"
 	output_dir = "./model"
 
@@ -148,10 +147,11 @@ def main(argv):
 	num_val = num_items - num_train
 	train_ds, valid_ds = random_split(ds, [num_train, num_val])
 
-	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
-	model.fc = nn.Linear(512,len(ds.classes))
-	model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-	model = model.to(device)
+	#model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
+	#model.fc = nn.Linear(512,len(ds.classes))
+	#model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+	#model = model.to(device)
+	model = ResnetCNN(len(ds.classes),device)
 
 	#----------------------------------------------------------------------------------------
 	lr = 0.001
@@ -177,7 +177,7 @@ def main(argv):
 		if train_acc > 99:
 			break;
 
-	save(model,output_dir)
+	save(model,train_acc,output_dir)
 	writer.close()
 	print('Finished Training')
 
