@@ -110,9 +110,11 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 	epoch_acc = 100. * (valid_running_correct / len(valid_loader.dataset))
 
 	print('-----------------------------------------------------------------------------')
+	print('                            Accuracy per class')
+	print('-----------------------------------------------------------------------------')
 	for i in range(len(class_names)):
 		if class_total[i] != 0:
-			print(f"Accuracy of class {class_names[i]}: {100*class_correct[i]/class_total[i]}")
+			print(f"\t{i}\t{class_names[i]}:\t\t{100*class_correct[i]/class_total[i]:04.1f}")
 	print('-----------------------------------------------------------------------------')
         
 	return epoch_loss, epoch_acc
@@ -141,7 +143,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(train_csv_file, device, max_value=200).to(device)
+	ds = SoundDataSet(train_csv_file, device, max_value=1000).to(device)
 	print(len(ds.classes))
 	num_items = len(ds)
 	num_train = round(num_items * 0.8)
