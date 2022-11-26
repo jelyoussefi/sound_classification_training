@@ -140,12 +140,8 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, max_value=1000).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, max_value=4000).to(device)
 	train_ds, valid_ds = ds.split(0.8)
-	#model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
-	#model.fc = nn.Linear(512,len(ds.classes))
-	#model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-	#model = model.to(device)
 	model = ResnetCNN(len(ds.classes),device)
 
 	#----------------------------------------------------------------------------------------
@@ -164,8 +160,8 @@ def main(argv):
 		valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
 		print(f'\tAccuracy\t train : {train_acc:.2f}, valid: {valid_acc:.2f}')
 
-		writer.add_scalar("Acc/train", train_acc, epoch)
-		writer.add_scalar("Acc/valid", valid_acc, epoch)
+		writer.add_scalars('Accuracy', {'train': train_acc}, epoch)
+		writer.add_scalars('Accuracy', {'valid': valid_acc}, epoch)
 
 		writer.flush()
 
