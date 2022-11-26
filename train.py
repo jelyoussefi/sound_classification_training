@@ -140,7 +140,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(csv_file, device, max_value=1000).to(device)
+	ds = SoundDataSet(csv_file, device, max_value=2000).to(device)
 	print(len(ds.classes))
 	num_items = len(ds)
 	num_train = round(num_items * 0.8)

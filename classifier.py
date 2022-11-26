@@ -174,24 +174,16 @@ class SoundDataSet(AudioProcessor) :
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['classID'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
+
 		self.df = self.df.sort_values(by=['duration'], ascending=False)
+		self.df =  self.df[self.df.duration >= 100]
+
 		if max_value is not None:
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
 			self.df = self.df.groupby("classID").head(max_value)
+		
+		self.classes = np.unique(self.df['classID'])
 
-
-		if labels_file is None:
-			self.classes = np.unique(self.df['classID'])
-
-			with open(r'./classes.txt', 'w') as fp:
-				fp.write('\n'.join(self.classes))
-		else:
-			with open(labels_file) as f:
-				self.classes = np.array(f.read().splitlines())
-				ds_classes = np.unique(self.df['classID'])
-				diff = list(set(ds_classes) - set(self.classes))
-				for cl in diff:
-					self.df = self.df.loc[self.df['classID'] != cl ]
 
 		self.df = self.df.sample(frac=1, ignore_index=True)
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']], dtype=object)
