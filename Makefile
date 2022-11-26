@@ -34,7 +34,12 @@ docker-build:
 
 docker-train: docker-build
 	@$(call msg, Traing with docker image ${DOCKER_IMAGE_NAME} ...)
-	@docker run -it --rm -a stdout -a stderr -v ${CURRENT_DIR}:/workspace -v /data:/data -w /workspace --gpus all ${DOCKER_IMAGE_NAME}  \
+	@mkdir -p ${CURRENT_DIR}/.cache
+	@docker run -it --rm -a stdout -a stderr \
+		-v ${CURRENT_DIR}:/workspace \
+		-v /data:/data -w /workspace \
+		-v ${CURRENT_DIR}/.cache:/root/.cache/ \
+		--gpus all ${DOCKER_IMAGE_NAME}  \
 		make
 
 monitor:

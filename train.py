@@ -140,13 +140,8 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(csv_file, device, max_value=2000).to(device)
-	print(len(ds.classes))
-	num_items = len(ds)
-	num_train = round(num_items * 0.8)
-	num_val = num_items - num_train
-	train_ds, valid_ds = random_split(ds, [num_train, num_val])
-
+	ds = SoundDataSet(device, metadata_file=csv_file, max_value=1000).to(device)
+	train_ds, valid_ds = ds.split(0.8)
 	#model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
 	#model.fc = nn.Linear(512,len(ds.classes))
 	#model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)

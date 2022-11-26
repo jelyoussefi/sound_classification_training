@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from torchvision.models import resnet34
 import librosa
 from torchsummary  import summary
+from torch.utils.data import random_split
 
 class AudioProcessor(nn.Module) :
 	def __init__(self, device, duration, frame_rate):
@@ -166,9 +167,13 @@ class AudioProcessor(nn.Module) :
 
 
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, metadata_file, device, labels_file=None, max_value=None):
-		super().__init__(device, duration=1000, frame_rate=44100)
+	def __init__(self, device, metadata_file=None, df=None, max_value=None):
+		super().__init__(device, duration=4000, frame_rate=44100)
 		
+		if df is not None:
+			self.df = df 
+			return
+
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
 		self.df.head()		
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
@@ -177,6 +182,7 @@ class SoundDataSet(AudioProcessor) :
 
 		self.df = self.df.sort_values(by=['duration'], ascending=False)
 		self.df =  self.df[self.df.duration >= 100]
+		self.df =  self.df[self.df.duration <= 5000]
 
 		if max_value is not None:
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
@@ -206,7 +212,21 @@ class SoundDataSet(AudioProcessor) :
 
 		print("Done in {} seconds".format(int(time.time() - st)))
 		self.df['sgram'] = sgrams
+				
 		
+	def split(self, train_ratio=0.8):
+
+		train_df = self.df.groupby('classID').sample(frac=train_ratio, random_state=1)
+		valid_df = self.df.drop(train_df.index)
+		train_df = train_df.sample(frac=1, ignore_index=True)
+		valid_df = valid_df.sample(frac=1, ignore_index=True)
+
+		train_ds = SoundDataSet(self.device, df=train_df)
+		sig, cid = train_ds[0]
+		valid_ds = SoundDataSet(self.device, df=valid_df)
+
+		return train_ds,valid_ds
+
 
 	def __len__(self):
 		return len(self.df)
