@@ -104,11 +104,11 @@ class AudioProcessor(nn.Module) :
 	def spectro_gram(self, waveform, freq_peak=None):
 		sig,sr = waveform
                 
-		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig)
+		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=2048, hop_length=512, n_mels=128).to(self.device)(sig)
 
 		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
-		return spec
+		return self.spectro_to_image(spec)
 
 	def spectro_augment(self, spec, max_mask_pct=0.1, n_freq_masks=1, n_time_masks=1):
 		_, n_mels, n_steps = spec.shape
@@ -124,6 +124,15 @@ class AudioProcessor(nn.Module) :
 			aug_spec = transforms.TimeMasking(time_mask_param)(aug_spec, mask_value)
 
 		return aug_spec
+
+	def spectro_to_image(self, spec, eps=1e-6):
+		mean = spec.mean()
+		std = spec.std()
+		spec_norm = (spec - mean) / (std + eps)
+		spec_min, spec_max = spec_norm.min(), spec_norm.max()
+		spec_scaled = 255 * (spec_norm - spec_min) / (spec_max - spec_min)
+		#spec_scaled = spec_scaled.type(torch.uint8)
+		return spec_scaled
 
 	def plot_waveform(self, waveform, title="Waveform", xlim=None, ylim=None):
 		signal,sr = waveform
