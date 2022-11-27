@@ -5,44 +5,58 @@ import time
 
 import numpy as np
 import pandas as pd
-from pathlib import Path
-
+from tqdm import tqdm
 import torch
-from torch.utils.tensorboard import SummaryWriter
-from classifier import SoundDataSet, AudioClassifier
+from classifier import SoundDataSet
 
 
-class Inference :
-	def __init__(self, device, model):
-		self.device = device
-		self.model = model
-		
-	def run(self, ds):
-		correct_prediction = 0
-		total_prediction = 0
-		val_dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=True)
-		# Disable gradient updates
-		with torch.no_grad():
-			for data in val_dl:
-				# Get the input features and target labels, and put them on the GPU
-				inputs, labels = data[0].to(self.device), data[1].to(self.device)
+def validate(model, device, valid_loader, loss_fn, class_names):
+	model.eval()
+	valid_running_loss = 0.0
+	valid_running_correct = 0
+	counter = 0
 
-				
-				# Normalize the inputs
-				inputs_m, inputs_s = inputs.mean(), inputs.std()
-				inputs = (inputs - inputs_m) / inputs_s
+	# we need two lists to keep track of class-wise accuracy
+	class_correct = list(0. for i in range(len(class_names)))
+	class_total = list(0. for i in range(len(class_names)))
 
-				# Get predictions
-				outputs = self.model(inputs)
-				print(outputs)
-				# Get the predicted class with the highest score
-				_, prediction = torch.max(outputs,1)
-				# Count of predictions that matched the target label
-				correct_prediction += (prediction == labels).sum().item()
-				total_prediction += prediction.shape[0]
+	with torch.no_grad():
+		for i, data in tqdm(enumerate(valid_loader), total=len(valid_loader)):
+			counter += 1
+            
+			image, labels = data
+			image = image.to(device)
+			labels = labels.to(device)
+			# forward pass
+			outputs = model(image)
+			# calculate the loss
+			loss = loss_fn(outputs, labels)
+			valid_running_loss += loss.item()
+			# calculate the accuracy
+			_, preds = torch.max(outputs.data, 1)
+			valid_running_correct += (preds == labels).sum().item()
 
-				acc = correct_prediction/total_prediction
-				print(f'Accuracy: {acc:.2f}, Total items: {total_prediction}')
+			# calculate the accuracy for each class
+			correct  = (preds == labels).squeeze()
+			for i in range(len(preds)):
+				label = labels[i]
+				class_correct[label] += correct[i].item()
+				class_total[label] += 1
+        
+	# loss and accuracy for the complete epoch
+	epoch_loss = valid_running_loss / counter
+	epoch_acc = 100. * (valid_running_correct / len(valid_loader.dataset))
+
+	print('-----------------------------------------------------------------------------')
+	print('                            Accuracy per class')
+	print('-----------------------------------------------------------------------------')
+	for i in range(len(class_names)):
+		if class_total[i] != 0:
+			print(f"\t{i}\t{class_names[i]}:\t\t{100*class_correct[i]/class_total[i]:04.1f}")
+	print('-----------------------------------------------------------------------------')
+        
+	return epoch_loss, epoch_acc
+
 
 def main(argv):
 

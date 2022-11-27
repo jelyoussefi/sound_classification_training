@@ -5,10 +5,8 @@ import os, sys
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import time
-import numpy as np
 import pandas as pd
-from pathlib import Path
-
+import numpy as np
 import torch
 import torchaudio
 from torch import nn
@@ -21,9 +19,8 @@ from torchaudio import transforms
 from IPython.display import Audio, display
 import matplotlib.pyplot as plt
 from torchvision.models import resnet34
-import librosa
 from torchsummary  import summary
-from torch.utils.data import random_split
+
 
 class AudioProcessor(nn.Module) :
 	def __init__(self, device, duration, frame_rate):
@@ -176,8 +173,8 @@ class AudioProcessor(nn.Module) :
 
 
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, device, metadata_file=None, df=None, max_value=None):
-		super().__init__(device, duration=4000, frame_rate=44100)
+	def __init__(self, device, metadata_file=None, df=None, min_number=None):
+		super().__init__(device, duration=1000, frame_rate=44100)
 		
 		if df is not None:
 			self.df = df 
@@ -190,12 +187,12 @@ class SoundDataSet(AudioProcessor) :
 		
 
 		self.df = self.df.sort_values(by=['duration'], ascending=False)
-		self.df =  self.df[self.df.duration >= 100]
+		self.df =  self.df[self.df.duration >= 50]
 		self.df =  self.df[self.df.duration <= 5000]
-
-		if max_value is not None:
-			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= max_value)
-			self.df = self.df.groupby("classID").head(max_value)
+		
+		if min_number is not None:
+			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= min_number)
+			#self.df = self.df.groupby("classID").head(max_value)
 		
 		self.classes = np.unique(self.df['classID'])
 
@@ -203,7 +200,6 @@ class SoundDataSet(AudioProcessor) :
 		self.df = self.df.sample(frac=1, ignore_index=True)
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']], dtype=object)
 		self.df['path'] = ds_path + '/' + self.df['path'];
-		
 		
 		np.set_printoptions(linewidth=2000) 
 		print(np.array(self.df['classID'].value_counts()))
@@ -246,19 +242,10 @@ class SoundDataSet(AudioProcessor) :
 		sgram = self.df.loc[idx, 'sgram']
 		return sgram, class_id
 
-	
-def ResnetCNN(nb_classes,device):
-    # ----------------------------
-    # Introduce the new model architecture
-    # ----------------------------
-        # RESET 34 Pretrained weights 
-        model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
-        model.fc = nn.Linear(512,nb_classes)
-        model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-        model = model.to(device)
-        return model
 
+def AudioCNN(nb_classes):
+	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
+	model.fc = nn.Linear(512,nb_classes)
+	model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+	return model
 
-if __name__== "__main__":
-	cnn = ResnetCNN(49,torch.device("cuda:0"))
-	summary(cnn, (1,64,86))
