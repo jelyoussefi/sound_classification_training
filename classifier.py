@@ -20,6 +20,9 @@ from IPython.display import Audio, display
 import matplotlib.pyplot as plt
 from torchvision.models import resnet34
 from torchsummary  import summary
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class AudioProcessor(nn.Module) :
