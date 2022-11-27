@@ -101,11 +101,11 @@ class AudioProcessor(nn.Module) :
 	def spectro_gram(self, waveform, freq_peak=None):
 		sig,sr = waveform
                 
-		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=2048, hop_length=512, n_mels=128).to(self.device)(sig)
+		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig)
 
 		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
-		return self.spectro_to_image(spec)
+		return spec
 
 	def spectro_augment(self, spec, max_mask_pct=0.1, n_freq_masks=1, n_time_masks=1):
 		_, n_mels, n_steps = spec.shape
@@ -181,7 +181,12 @@ class SoundDataSet(AudioProcessor) :
 
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
 		self.df.head()	
-		
+
+		self.df = self.df[self.df.duration >= 50]
+		self.df = self.df[self.df.duration <= 4000]
+
+		#print(self.df)		
+
 		self.df.insert(loc=len(self.df.columns), column='sgram', value=object);
 		
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
@@ -196,16 +201,11 @@ class SoundDataSet(AudioProcessor) :
 			self.df = self.df.sort_values(by=['duration'], ascending=False)
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= min_number)
 			self.df = self.df.sample(frac=1, ignore_index=True)
-		np.set_printoptions(linewidth=2000) 
-		print(np.array(self.df['duration']))
-
+		
 		if max_number is not None:
 			self.df = self.df.sort_values(by=['duration'], ascending=False)
 			self.df = self.df.groupby("classID").head(max_number)
 			self.df = self.df.sample(frac=1, ignore_index=True)
-
-		np.set_printoptions(linewidth=2000) 
-		print(np.array(self.df['duration']))
 
 		self.classes = np.unique(self.df['classID'])
 
