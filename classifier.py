@@ -172,7 +172,7 @@ class AudioProcessor(nn.Module) :
 
 
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, device, metadata_file=None, df=None, duration=1000, min_number=None, max_number=None):
+	def __init__(self, device, metadata_file=None, labels_file=None, df=None, duration=1000, min_number=None, max_number=None):
 		super().__init__(device, duration=duration, frame_rate=44100)
 		
 		if df is not None:
@@ -207,7 +207,17 @@ class SoundDataSet(AudioProcessor) :
 			self.df = self.df.groupby("class_id").head(max_number)
 			self.df = self.df.sample(frac=1, ignore_index=True)
 
-		self.classes = np.unique(self.df['class_id'])
+		if labels_file is not None:
+			with open(labels_file) as f:
+				self.classes = np.array(f.read().splitlines())
+				ds_classes = np.unique(self.df['class_id'])
+				diff = list(set(ds_classes) - set(self.classes))
+				for cl in diff:
+					self.df = self.df.loc[self.df['class_id'] != cl ]
+					
+				print(self.classes)
+		else:
+			self.classes = np.unique(self.df['class_id'])
 
 		self.df = self.df.sample(frac=1, ignore_index=True)
 		self.df['class_id'] = np.array([np.where(self.classes==c)[0] for c in self.df['class_id']], dtype=object)

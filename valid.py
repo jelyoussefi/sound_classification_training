@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import torch
+from torch import nn
+import torch.optim as optim
 from classifier import SoundDataSet
 
 
@@ -60,35 +62,43 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 
 def main(argv):
 
-	csvFile = "./dataset/validation/config_l.csv"
-	model_path = None
+	csv_file    = "./dataset/validation/config.csv"
+	model_path  = "./model/model.pth"
+	labesl_path = "./model/labels.txt"
 	try:
-		opts, args = getopt.getopt(argv[1:],"hc:m:",["config=", "model="])
+		opts, args = getopt.getopt(argv[1:],"hc:m:l:",["config=", "model=",  "labels="])
 	except getopt.GetoptError:
 		print("{} -c <csv file> -m <model>".format(argv[0]))
 		sys.exit(2)
 	for opt, arg in opts:
 		if opt == '-h':
-			print("{} -c <csv file> -m <model> ".format(argv[0]))
+			print("{} -c <csv file> -m <model> -l <labels>".format(argv[0]))
 			sys.exit()
 		elif opt in ("-c", "--config"):
 			csvFile = arg
 		elif opt in ("-m", "--model"):
 			model_path = arg
+		elif opt in ("-l", "--labels"):
+			labesl_path = arg
 
 	if model_path is None:
-		print("{} -c <csv file> -m <model>".format(argv[0]))
+		print("{} -c <csv file> -m <model> -l <labels> ".format(argv[0]))
 		sys.exit(2)
 
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ",device)
 	
-	model = torch.load(model_path)
+	model = torch.load(model_path).to(device)
 
-	ds = SoundDataSet(csvFile, device, labels_file="./classes.txt", ratio=1)
-	inf = Inference(device, model)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, labels_file=labesl_path).to(device)
+	valid_loader = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
+	lr = 0.001
+	epochs = 50
+	optimizer = optim.Adam(model.parameters(), lr=lr)
+	criterion = nn.CrossEntropyLoss()
 
-	inf.run(ds)
+	valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
+	print(f'\tAccuracy\t valid: {valid_acc:.2f}')
 
 
 if __name__ == "__main__":

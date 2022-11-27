@@ -24,7 +24,7 @@ train:
 	#@python3 ./train.py -c ./dataset/training/config_12class_evenspread.csv -o "./model"
 valid:
 	@$(call msg, Validating the Audio Classification Model   ...)
-	@python3 ./valid.py -m ./model/model.pth
+	@python3 ./valid.py -m ./model/model.pth -l ./model/labels.txt
 
 
 docker-build:
