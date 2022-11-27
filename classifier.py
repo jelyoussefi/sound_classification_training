@@ -214,8 +214,6 @@ class SoundDataSet(AudioProcessor) :
 				diff = list(set(ds_classes) - set(self.classes))
 				for cl in diff:
 					self.df = self.df.loc[self.df['class_id'] != cl ]
-					
-				print(self.classes)
 		else:
 			self.classes = np.unique(self.df['class_id'])
 
@@ -238,10 +236,10 @@ class SoundDataSet(AudioProcessor) :
 			freq_peak = self.df.loc[idx, 'frequency_peak']
 			class_id = self.df.loc[idx, 'class_id']
 			sgram = self.get_spectrum(audio_file, start_time, duration, freq_peak, False)
-			self.df.loc[idx, 'sgram'] = sgram
+			self.df.loc[idx, 'sgram'] = sgram.cpu()
 
 			sgram = self.get_spectrum(audio_file, start_time, duration, freq_peak, True)
-			aug_row = [ audio_file, start_time, duration, freq_peak, sgram, class_id ]
+			aug_row = [ audio_file, start_time, duration, freq_peak, sgram.cpu(), class_id ]
 			
 			self.df = self.df.append(pd.Series(aug_row, index=self.df.columns[:len(aug_row)]), ignore_index=True)
 
