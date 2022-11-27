@@ -171,10 +171,9 @@ class AudioProcessor(nn.Module) :
 			raise ValueError("Waveform with more than 2 channels are not supported.")
 
 
-
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, device, metadata_file=None, df=None, min_number=None):
-		super().__init__(device, duration=1000, frame_rate=44100)
+	def __init__(self, device, metadata_file=None, df=None, duration=1000, min_number=None, max_number=None):
+		super().__init__(device, duration=duration, frame_rate=44100)
 		
 		if df is not None:
 			self.df = df 
@@ -186,16 +185,18 @@ class SoundDataSet(AudioProcessor) :
 		self.df['classID'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
 
-		self.df = self.df.sort_values(by=['duration'], ascending=False)
-		self.df =  self.df[self.df.duration >= 50]
+		self.df =  self.df[self.df.duration >= 100]
 		self.df =  self.df[self.df.duration <= 5000]
 		
 		if min_number is not None:
+			self.df = self.df.sort_values(by=['duration'], ascending=False)
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= min_number)
-			#self.df = self.df.groupby("classID").head(max_value)
+
+		if max_number is not None:
+			self.df = self.df.sort_values(by=['duration'], ascending=False)
+			self.df = self.df.groupby("classID").head(max_number)
 		
 		self.classes = np.unique(self.df['classID'])
-
 
 		self.df = self.df.sample(frac=1, ignore_index=True)
 		self.df['classID'] = np.array([np.where(self.classes==c)[0] for c in self.df['classID']], dtype=object)
