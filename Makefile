@@ -19,12 +19,16 @@ install_prerequisite:
 train:
 	@$(call msg, Training the Audio Classification Model   ...)
 	@rm -rf ./runs
+	@python3 ./train.py -c ./dataset/training/config.csv  -o "./model"
+
+train_valid:
+	@$(call msg, Training the Audio Classification Model   ...)
+	@rm -rf ./runs
 	@python3 ./train.py -c ./dataset/training/config.csv  -v ./dataset/validation/config.csv -o "./model"
 
-	#@python3 ./train.py -c ./dataset/training/config_12class_evenspread.csv -o "./model"
-valid:
-	@$(call msg, Validating the Audio Classification Model   ...)
-	@python3 ./valid.py -m ./model/model.pth -l ./model/labels.txt
+infer:
+	@$(call msg, Inferencing with Audio Classification Model   ...)
+	@python3 ./inference.py -m ./model/model.pth -i ./dataset/training/Acthyp--Acthyp--Actitis-hypoleucos-114232-R1.wav
 
 
 docker-build:

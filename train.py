@@ -78,7 +78,7 @@ def main(argv):
 	csv_valid_file = None
 
 	try:
-		opts, args = getopt.getopt(argv[1:],"hc:v:o:",["config=","config_valid=""ouput_dir="])
+		opts, args = getopt.getopt(argv[1:],"hc:v:o:",["config=","config_valid=", "ouput_dir="])
 	except getopt.GetoptError:
 		print("{} -c <csv file>".format(argv[0]))
 		sys.exit(2)
@@ -96,7 +96,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=500, max_number=2000).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=100, max_number=200).to(device)
 	if csv_valid_file is None:
 		train_ds, valid_ds = ds.split(0.8)
 	else:
