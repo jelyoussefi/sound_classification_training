@@ -75,9 +75,10 @@ def train(model, device, train_loader, optimizer, loss_fn):
 def main(argv):
 	csv_file = "./dataset/training/config.csv"
 	output_dir = "./model"
+	csv_valid_file = None
 
 	try:
-		opts, args = getopt.getopt(argv[1:],"hc:o:",["config=","ouput_dir="])
+		opts, args = getopt.getopt(argv[1:],"hc:v:o:",["config=","config_valid=""ouput_dir="])
 	except getopt.GetoptError:
 		print("{} -c <csv file>".format(argv[0]))
 		sys.exit(2)
@@ -87,14 +88,21 @@ def main(argv):
 			sys.exit()
 		elif opt in ("-c", "--config"):
 			csv_file = arg
+		elif opt in ("-v", "--config_valid"):
+			csv_valid_file = arg
 		elif opt in ("-o", "--ouput_dir"):
 			output_dir = arg
 
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=4000).to(device)
-	train_ds, valid_ds = ds.split(0.8)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=500, max_number=2000).to(device)
+	if csv_valid_file is None:
+		train_ds, valid_ds = ds.split(0.8)
+	else:
+		train_ds = ds;
+		valid_ds = SoundDataSet(device, metadata_file=csv_valid_file, classes=ds.classes, duration=1000).to(device)
+
 	model = AudioCNN(len(ds.classes)).to(device)
 
 	with open(os.path.join(output_dir,"labels.txt"), 'w') as fp:

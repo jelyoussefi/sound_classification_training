@@ -172,7 +172,7 @@ class AudioProcessor(nn.Module) :
 
 
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, device, metadata_file=None, labels_file=None, df=None, duration=1000, min_number=None, max_number=None):
+	def __init__(self, device, metadata_file=None, classes=None, df=None, duration=1000, min_number=None, max_number=None):
 		super().__init__(device, duration=duration, frame_rate=44100)
 		
 		if df is not None:
@@ -190,40 +190,35 @@ class SoundDataSet(AudioProcessor) :
 		self.df.insert(loc=len(self.df.columns), column='sgram', value=object);
 		
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
-		self.df['class_id'] = np.array([c.split('-')[0] for c in self.df['path']])
+		self.df['class'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
 		self.df = self.df.sort_values(by=['duration'], ascending=False)
-		self.df = self.df[self.df["duration"] >= 116]
-		
-		#self.df =  self.df[self.df.duration <= 5000]
-		
+				
 		if min_number is not None:
 			self.df = self.df.sort_values(by=['duration'], ascending=False)
-			self.df =  self.df.groupby("class_id").filter(lambda x: len(x) >= min_number)
+			self.df =  self.df.groupby("class").filter(lambda x: len(x) >= min_number)
 			self.df = self.df.sample(frac=1, ignore_index=True)
 		
 		if max_number is not None:
 			self.df = self.df.sort_values(by=['duration'], ascending=False)
-			self.df = self.df.groupby("class_id").head(max_number)
+			self.df = self.df.groupby("class").head(max_number)
 			self.df = self.df.sample(frac=1, ignore_index=True)
 
-		if labels_file is not None:
-			with open(labels_file) as f:
-				self.classes = np.array(f.read().splitlines())
-				ds_classes = np.unique(self.df['class_id'])
-				diff = list(set(ds_classes) - set(self.classes))
-				for cl in diff:
-					self.df = self.df.loc[self.df['class_id'] != cl ]
+		if classes is not None:
+			self.classes = classes
+			ds_classes = np.unique(self.df['class'])
+			diff = list(set(ds_classes) - set(self.classes))
+			for cl in diff:
+				self.df = self.df.loc[self.df['class'] != cl ]
 		else:
-			self.classes = np.unique(self.df['class_id'])
+			self.classes = np.unique(self.df['class'])
 
 		self.df = self.df.sample(frac=1, ignore_index=True)
-		self.df['class_id'] = np.array([np.where(self.classes==c)[0] for c in self.df['class_id']], dtype=object)
+		self.df['class_id'] = np.array([np.where(self.classes==c)[0] for c in self.df['class']], dtype=object)
 		self.df['path'] = ds_path + '/' + self.df['path'];
 		
 		np.set_printoptions(linewidth=2000) 
-		print(np.array(self.df['class_id'].value_counts()))
-		print(np.array(self.df['duration']))
+		print(np.array(self.df['class'].value_counts()))
 
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		st = time.time()
@@ -234,12 +229,13 @@ class SoundDataSet(AudioProcessor) :
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
 			freq_peak = self.df.loc[idx, 'frequency_peak']
+			class_ = self.df.loc[idx, 'class']
 			class_id = self.df.loc[idx, 'class_id']
 			sgram = self.get_spectrum(audio_file, start_time, duration, freq_peak, False)
 			self.df.loc[idx, 'sgram'] = sgram.cpu()
 
 			sgram = self.get_spectrum(audio_file, start_time, duration, freq_peak, True)
-			aug_row = [ audio_file, start_time, duration, freq_peak, sgram.cpu(), class_id ]
+			aug_row = [ audio_file, start_time, duration, freq_peak, sgram.cpu(), class_, class_id ]
 			
 			self.df = self.df.append(pd.Series(aug_row, index=self.df.columns[:len(aug_row)]), ignore_index=True)
 

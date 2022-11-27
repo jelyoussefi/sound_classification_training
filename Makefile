@@ -10,7 +10,7 @@ export DOCKER_BUILDKIT=1
 # Targets
 #----------------------------------------------------------------------------------------------------------------------
 default: train 
-.PHONY:  test
+.PHONY:  
 
 install_prerequisite:
 	@$(call msg, Installing Prerequisite  ...)
@@ -19,7 +19,7 @@ install_prerequisite:
 train:
 	@$(call msg, Training the Audio Classification Model   ...)
 	@rm -rf ./runs
-	@python3 ./train.py -c ./dataset/training/config.csv -o "./model"
+	@python3 ./train.py -c ./dataset/training/config.csv  -v ./dataset/validation/config.csv -o "./model"
 
 	#@python3 ./train.py -c ./dataset/training/config_12class_evenspread.csv -o "./model"
 valid:
