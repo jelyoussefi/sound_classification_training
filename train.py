@@ -140,7 +140,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, max_value=4000).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, max_value=2000).to(device)
 	train_ds, valid_ds = ds.split(0.8)
 	model = ResnetCNN(len(ds.classes),device)
 
