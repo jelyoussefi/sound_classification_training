@@ -6,7 +6,7 @@ from datetime import datetime
 
 import numpy as np
 import torch
-from torch_ort import ORTInferenceModule 
+from torch_ort import ORTInferenceModule, OpenVINOProviderOptions
 from audio_processor import AudioProcessor
 
 
@@ -39,7 +39,11 @@ def main(argv):
 		print("{} -m <model> -i <input>".format(argv[0]))
 		sys.exit(2)
 
-	model = ORTInferenceModule(model)
+	model = torch.load(model_path).to(device)
+	provider_options = OpenVINOProviderOptions(backend = "CPU", precision = "FP32")
+	model = ORTInferenceModule(model, provider_options = provider_options)
+   model.eval()
+
 
 	infer(device, model, input_file)
 
