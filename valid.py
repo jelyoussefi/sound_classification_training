@@ -97,8 +97,10 @@ def main(argv):
 	optimizer = optim.Adam(model.parameters(), lr=lr)
 	criterion = nn.CrossEntropyLoss()
 
-	valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
-	print(f'\tAccuracy\t valid: {valid_acc:.2f}')
+	for epoch in range(epochs):
+		print(f"Epoch {epoch+1} of {epochs}")
+		valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
+		print(f'\tAccuracy\t valid: {valid_acc:.2f}')
 
 
 if __name__ == "__main__":
