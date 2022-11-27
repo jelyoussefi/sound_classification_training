@@ -180,22 +180,33 @@ class SoundDataSet(AudioProcessor) :
 			return
 
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
-		self.df.head()		
+		self.df.head()	
+		
+		self.df.insert(loc=len(self.df.columns), column='sgram', value=object);
+		
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['classID'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
-
-		self.df =  self.df[self.df.duration >= 100]
-		self.df =  self.df[self.df.duration <= 5000]
+		self.df = self.df.sort_values(by=['duration'], ascending=False)
+		self.df = self.df[self.df["duration"] >= 116]
+		
+		#self.df =  self.df[self.df.duration <= 5000]
 		
 		if min_number is not None:
 			self.df = self.df.sort_values(by=['duration'], ascending=False)
 			self.df =  self.df.groupby("classID").filter(lambda x: len(x) >= min_number)
+			self.df = self.df.sample(frac=1, ignore_index=True)
+		np.set_printoptions(linewidth=2000) 
+		print(np.array(self.df['duration']))
 
 		if max_number is not None:
 			self.df = self.df.sort_values(by=['duration'], ascending=False)
 			self.df = self.df.groupby("classID").head(max_number)
-		
+			self.df = self.df.sample(frac=1, ignore_index=True)
+
+		np.set_printoptions(linewidth=2000) 
+		print(np.array(self.df['duration']))
+
 		self.classes = np.unique(self.df['classID'])
 
 		self.df = self.df.sample(frac=1, ignore_index=True)
@@ -204,6 +215,7 @@ class SoundDataSet(AudioProcessor) :
 		
 		np.set_printoptions(linewidth=2000) 
 		print(np.array(self.df['classID'].value_counts()))
+		print(np.array(self.df['duration']))
 
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		sgrams = []
@@ -214,10 +226,9 @@ class SoundDataSet(AudioProcessor) :
 			duration   = self.df.loc[idx, 'duration']
 			maxfreq = self.df.loc[idx, 'frequency_peak']
 			sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq, True)
-			sgrams.append(sgram.cpu())
+			self.df.loc[idx, 'sgram'] = sgram
 
 		print("Done in {} seconds".format(int(time.time() - st)))
-		self.df['sgram'] = sgrams
 				
 		
 	def split(self, train_ratio=0.8):
