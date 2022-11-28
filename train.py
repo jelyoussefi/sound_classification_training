@@ -35,7 +35,7 @@ def lr_decay(optimizer, epoch):
 	return optimizer
 
 
-def train(model, device, train_loader, optimizer, loss_fn):
+def train(model, device, train_loader, optimizer, scheduler, loss_fn):
 
 		model.train()
 		train_running_loss = 0.0
@@ -47,6 +47,9 @@ def train(model, device, train_loader, optimizer, loss_fn):
 			optimizer.zero_grad()
 			image = image.to(device, dtype=torch.float32)
 			labels = labels.to(device, dtype=torch.long)
+                        # Normalize the inputs
+			image_m, image_s = image.mean(), image.std()
+			image = (image - image_m) / image_s
 			
 			# forward pass
 			outputs = model(image)
@@ -64,6 +67,7 @@ def train(model, device, train_loader, optimizer, loss_fn):
 
 			# update the optimizer parameters
 			optimizer.step()
+			scheduler.step()
 
 		# loss and accuracy for the complete epoch
 		epoch_loss = train_running_loss / counter
@@ -96,7 +100,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=100, max_number=200).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=2000).to(device)
 	if csv_valid_file is None:
 		train_ds, valid_ds = ds.split(0.8)
 	else:
@@ -113,14 +117,19 @@ def main(argv):
 	#----------------------------------------------------------------------------------------
 	lr = 0.001
 	epochs = 50
-	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
-	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
+	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=1, shuffle=True)
+	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=1, shuffle=True)
 	optimizer = optim.Adam(model.parameters(), lr=lr)
+	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
+                                                    steps_per_epoch=int(
+                                                        len(train_ds)),
+                                                    epochs=epochs,
+                                                    anneal_strategy='linear')
 	criterion = nn.CrossEntropyLoss()
 
 	for epoch in range(epochs):
 		print(f"Epoch {epoch+1} of {epochs}")
-		train_loss, train_acc = train(model, device, train_loader, optimizer, criterion)
+		train_loss, train_acc = train(model, device, train_loader, optimizer, scheduler, criterion)
 		valid_loss, valid_acc = validate(model, device, valid_loader, criterion, ds.classes)
 		print(f'\tAccuracy\t train : {train_acc:.2f}, valid: {valid_acc:.2f}')
 
