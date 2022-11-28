@@ -18,6 +18,7 @@ from torch.nn import init
 import math, random
 import torchaudio
 from torchaudio import transforms
+from torchvision.models import resnet34
 from IPython.display import Audio, display
 import matplotlib.pyplot as plt
 import librosa
@@ -164,7 +165,7 @@ class AudioProcessor(nn.Module) :
 
 
 class SoundDataSet(AudioProcessor) :
-	def __init__(self, metadata_file, device, labels_file=None, ratio=1):
+	def __init__(self, metadata_file, device, augment, labels_file=None, ratio=1):
 		super().__init__(device, duration=1000, frame_rate=44100)
 		
 		self.df = pd.read_csv(metadata_file, sep=";", names=["path", "start_time", "duration", "frequency_peak"])
@@ -197,7 +198,7 @@ class SoundDataSet(AudioProcessor) :
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
 			maxfreq = self.df.loc[idx, 'frequency_peak']
-			sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq)
+			sgram = self.get_spectrum(audio_file, start_time, duration, maxfreq, augment)
 			sgrams.append(sgram.cpu())
 			
 			#self.plot_waveform(waveform)
@@ -295,7 +296,18 @@ class CNNAudioClassifier(nn.Module):
         predictions = self.softmax(logits)
         return predictions
 
+def ResnetCNN(nb_classes,device):
+    # ----------------------------
+    # Introduce the new model architecture
+    # ----------------------------
+        # RESET 34 Pretrained weights
+        model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
+        model.fc = nn.Linear(512,nb_classes)
+        model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        model = model.to(device)
+        return model
+
 
 if __name__== "__main__":
-	cnn = CNNAudioClassifier(49)
+	cnn = ResnetCNN(49,torch.device("cuda:0"))
 	summary(cnn, (1,64,86))

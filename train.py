@@ -7,7 +7,7 @@ from datetime import datetime
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-from classifier import SoundDataSet, CNNAudioClassifier
+from classifier import SoundDataSet, ResnetCNN
 
 
 def save(model, acc, output_dir):
@@ -25,11 +25,11 @@ def save(model, acc, output_dir):
 
 def train(model, ds, device, num_epochs, threshold=0.99, output_dir="./output"):
 
-	train_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=True)
+	train_dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=True)
 	# Loss Function, Optimizer and Scheduler
 	criterion = nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
-	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001,
+	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
 	                                        	steps_per_epoch=int(len(train_dl)),
 	                                        	epochs=num_epochs,
 	                                        	anneal_strategy='linear')
@@ -114,8 +114,9 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 	
-	ds = SoundDataSet(csvFile, device, ratio=0.01).to(device)
-	model = CNNAudioClassifier(len(ds.classes)).to(device)
+	ds = SoundDataSet(csvFile, device, augment=True, ratio=0.1).to(device)
+	#model = CNNAudioClassifier(len(ds.classes)).to(device)
+	model = ResnetCNN(len(ds.classes),device).to(device)
 
 	train(model, ds, device, num_epochs=1000, output_dir=output_dir)
 
