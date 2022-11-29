@@ -43,13 +43,17 @@ def train(model, device, train_loader, optimizer, loss_fn):
 		counter = 0
 		for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
 			counter += 1
-			image, labels = data
+			inputs, labels = data
 			optimizer.zero_grad()
-			image = image.to(device, dtype=torch.float32)
+			inputs = inputs.to(device, dtype=torch.float32)
 			labels = labels.to(device, dtype=torch.long)
+
+			# Normalize the inputs
+			inputs_m, inputs_s = inputs.mean(), inputs.std()
+			inputs = (inputs - inputs_m) / inputs_s
 			
 			# forward pass
-			outputs = model(image)
+			outputs = model(inputs)
 			
 			# calculate the loss
 			loss = loss_fn(outputs, labels)
@@ -96,7 +100,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=100, max_number=200).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=1000).to(device)
 	if csv_valid_file is None:
 		train_ds, valid_ds = ds.split(0.8)
 	else:
@@ -113,8 +117,8 @@ def main(argv):
 	#----------------------------------------------------------------------------------------
 	lr = 0.001
 	epochs = 50
-	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
-	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
+	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=1, shuffle=True)
+	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=1, shuffle=True)
 	optimizer = optim.Adam(model.parameters(), lr=lr)
 	criterion = nn.CrossEntropyLoss()
 

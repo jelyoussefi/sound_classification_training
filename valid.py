@@ -26,11 +26,16 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 		for i, data in tqdm(enumerate(valid_loader), total=len(valid_loader)):
 			counter += 1
             
-			image, labels = data
-			image = image.to(device)
+			inputs, labels = data
+			inputs = inputs.to(device)
 			labels = labels.to(device)
+
+			# Normalize the inputs
+			inputs_m, inputs_s = inputs.mean(), inputs.std()
+			inputs = (inputs - inputs_m) / inputs_s
+		
 			# forward pass
-			outputs = model(image)
+			outputs = model(inputs)
 			# calculate the loss
 			loss = loss_fn(outputs, labels)
 			valid_running_loss += loss.item()
