@@ -29,6 +29,8 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			image, labels = data
 			image = image.to(device)
 			labels = labels.to(device)
+			image_m, image_s = (image*1.0).mean(), (image*1.0).std()
+			image = 255*((image - image_m) / image_s)
 			# forward pass
 			outputs = model(image)
 			# calculate the loss
@@ -42,7 +44,7 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			correct  = (preds == labels).squeeze()
 			for i in range(len(preds)):
 				label = labels[i]
-				class_correct[label] += correct.item()
+				class_correct[label] += correct[i].item()
 				class_total[label] += 1
         
 	# loss and accuracy for the complete epoch

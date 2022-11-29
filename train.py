@@ -48,8 +48,8 @@ def train(model, device, train_loader, optimizer, scheduler, loss_fn):
 			image = image.to(device, dtype=torch.float32)
 			labels = labels.to(device, dtype=torch.long)
                         # Normalize the inputs
-			image_m, image_s = image.mean(), image.std()
-			image = (image - image_m) / image_s
+			image_m, image_s = (image*1.0).mean(), (image*1.0).std()
+			image = 255*((image - image_m) / image_s)
 			
 			# forward pass
 			outputs = model(image)
@@ -117,8 +117,8 @@ def main(argv):
 	#----------------------------------------------------------------------------------------
 	lr = 0.001
 	epochs = 50
-	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=1, shuffle=True)
-	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=1, shuffle=True)
+	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
+	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
 	optimizer = optim.Adam(model.parameters(), lr=lr)
 	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
                                                     steps_per_epoch=int(
