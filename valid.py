@@ -28,6 +28,9 @@ def validate(model, device, valid_loader, loss_fn, class_names):
             
 			image, labels = data
 			image = image.to(device)
+                        # Normalize the inputs
+			image_m, image_s = image.mean(), image.std()
+			image = (image - image_m) / image_s
 			labels = labels.to(device)
 			image_m, image_s = (image*1.0).mean(), (image*1.0).std()
 			image = 255*((image - image_m) / image_s)
