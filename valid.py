@@ -47,7 +47,7 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			correct  = (preds == labels).squeeze()
 			for i in range(len(preds)):
 				label = labels[i]
-				class_correct[label] += correct[i].item()
+				class_correct[label] += correct.item()
 				class_total[label] += 1
         
 	# loss and accuracy for the complete epoch
