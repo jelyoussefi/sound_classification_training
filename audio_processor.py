@@ -11,6 +11,8 @@ import torchaudio
 from torchaudio import transforms
 from IPython.display import Audio, display
 import matplotlib.pyplot as plt
+import torchvision
+
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -25,7 +27,7 @@ class AudioProcessor(nn.Module) :
 		self.shift_pct = 0.4		
 	
 
-	def get_spectrum(self, audio_file, start_time=None, duration=None, freq_peak=None, augment=False):
+	def audio_to_image(self, audio_file, start_time=None, duration=None, freq_peak=None, augment=False):
 		
 		f_offset = 0
 		f_audio_duration = 0
@@ -37,7 +39,7 @@ class AudioProcessor(nn.Module) :
 			f_center = f_start_time + f_duration/2;
 			f_audio_duration = int((self.duration*info.sample_rate)/1000.0)
 			f_offset = max(0, int(f_center - f_audio_duration/2))
-			
+
 		sig, sr = torchaudio.load(audio_file, frame_offset=f_offset, num_frames=f_audio_duration)
 		sig = sig.to(self.device)
 		waveform = (sig, sr)
@@ -51,7 +53,11 @@ class AudioProcessor(nn.Module) :
 		sgram = self.spectro_gram(waveform,freq_peak)
 		if augment is True:
 			sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
-		return sgram
+
+		image = torch.cat([sgram, sgram, sgram])
+		max_val = torch.abs(image).max()
+		image = image / max_val
+		return  torch.tensor(image)
 		
 
 	def resample(self, waveform, newsr):

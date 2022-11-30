@@ -27,14 +27,6 @@ def save(model, acc, output_dir):
 		os.remove(model_path_symblink)
 	os.symlink(os.path.basename(model_path), model_path_symblink)
 
-def lr_decay(optimizer, epoch):
-	if epoch%10==0:
-		new_lr = learning_rate / (10**(epoch//10))
-		optimizer = setlr(optimizer, new_lr)
-		print(f'Changed learning rate to {new_lr}')
-	return optimizer
-
-
 def train(model, device, train_loader, optimizer, scheduler, loss_fn):
 
 		model.train()
@@ -47,17 +39,7 @@ def train(model, device, train_loader, optimizer, scheduler, loss_fn):
 			optimizer.zero_grad()
 			inputs = inputs.to(device, dtype=torch.float32)
 			labels = labels.to(device, dtype=torch.long)
-<<<<<<< HEAD
 
-			# Normalize the inputs
-			inputs_m, inputs_s = inputs.mean(), inputs.std()
-			inputs = (inputs - inputs_m) / inputs_s
-=======
-                        # Normalize the inputs
-			image_m, image_s = image.mean(), image.std()
-			image = (image - image_m) / image_s
->>>>>>> afca32fa598ec62965a33177bcff9e5a7db07501
-			
 			# forward pass
 			outputs = model(inputs)
 			
@@ -107,11 +89,8 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-<<<<<<< HEAD
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=1000).to(device)
-=======
 	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=2000).to(device)
->>>>>>> afca32fa598ec62965a33177bcff9e5a7db07501
+
 	if csv_valid_file is None:
 		train_ds, valid_ds = ds.split(0.8)
 	else:
@@ -128,8 +107,8 @@ def main(argv):
 	#----------------------------------------------------------------------------------------
 	lr = 0.001
 	epochs = 50
-	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=1, shuffle=True)
-	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=1, shuffle=True)
+	train_loader = torch.utils.data.DataLoader(train_ds, batch_size=16, shuffle=True)
+	valid_loader = torch.utils.data.DataLoader(valid_ds, batch_size=16, shuffle=True)
 	optimizer = optim.Adam(model.parameters(), lr=lr)
 	scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
                                                     steps_per_epoch=int(

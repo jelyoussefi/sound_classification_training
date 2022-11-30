@@ -9,9 +9,11 @@ import pandas as pd
 import numpy as np
 import torch
 from torch import nn
+import torchvision
 from torchvision.models import resnet34
 from audio_processor import AudioProcessor
 import warnings
+import math
 
 warnings.filterwarnings("ignore")
 
@@ -32,8 +34,9 @@ class SoundDataSet(AudioProcessor) :
 
 		#print(self.df)		
 
-		self.df.insert(loc=len(self.df.columns), column='sgram', value=object);
-		
+		self.df.insert(loc=len(self.df.columns), column='image', value=torch.Tensor);
+		self.df.insert(loc=len(self.df.columns), column='augmented', value=False);
+
 		ds_path = os.path.dirname(os.path.abspath(metadata_file))
 		self.df['class'] = np.array([c.split('-')[0] for c in self.df['path']])
 		
@@ -68,7 +71,7 @@ class SoundDataSet(AudioProcessor) :
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		st = time.time()
 		ds_len = len(self.df);
-
+		print(self.df)
 		for idx in range(len(self.df)):
 			audio_file = self.df.loc[idx, 'path']
 			start_time = self.df.loc[idx, 'start_time']
@@ -76,11 +79,12 @@ class SoundDataSet(AudioProcessor) :
 			freq_peak = self.df.loc[idx, 'frequency_peak']
 			class_ = self.df.loc[idx, 'class']
 			class_id = self.df.loc[idx, 'class_id']
-			sgram = self.get_spectrum(audio_file, start_time, duration, freq_peak, False)
-			self.df.loc[idx, 'sgram'] = sgram.cpu()
+			image = self.audio_to_image(audio_file, start_time, duration, freq_peak, False)
+			self.df.at[idx, 'image'] = image
+			self.df.at[idx, 'augmented'] = False
 
-			sgram = self.get_spectrum(audio_file, start_time, duration, freq_peak, True)
-			aug_row = [ audio_file, start_time, duration, freq_peak, sgram.cpu(), class_, class_id ]
+			image = self.audio_to_image(audio_file, start_time, duration, freq_peak, True)
+			aug_row = [ audio_file, start_time, duration, freq_peak, image, True, class_, class_id ]
 			
 			self.df = self.df.append(pd.Series(aug_row, index=self.df.columns[:len(aug_row)]), ignore_index=True)
 
@@ -91,11 +95,12 @@ class SoundDataSet(AudioProcessor) :
 
 		train_df = self.df.groupby('class_id').sample(frac=train_ratio, random_state=1)
 		valid_df = self.df.drop(train_df.index)
+		valid_df = valid_df[valid_df.augmented == True]
+
 		train_df = train_df.sample(frac=1, ignore_index=True)
 		valid_df = valid_df.sample(frac=1, ignore_index=True)
 
 		train_ds = SoundDataSet(self.device, df=train_df)
-		sig, cid = train_ds[0]
 		valid_ds = SoundDataSet(self.device, df=valid_df)
 
 		return train_ds,valid_ds
@@ -107,13 +112,12 @@ class SoundDataSet(AudioProcessor) :
 	def __getitem__(self, idx):
 
 		class_id = self.df.loc[idx, 'class_id']
-		sgram = self.df.loc[idx, 'sgram']
-		return sgram, class_id
+		image = self.df.loc[idx, 'image']
+		return image, class_id
 
 
 def AudioCNN(nb_classes):
 	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
 	model.fc = nn.Linear(512,nb_classes)
-	model.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 	return model
 

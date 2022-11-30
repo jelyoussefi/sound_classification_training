@@ -30,10 +30,6 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			inputs = inputs.to(device)
 			labels = labels.to(device)
 
-			# Normalize the inputs
-			inputs_m, inputs_s = inputs.mean(), inputs.std()
-			inputs = (inputs - inputs_m) / inputs_s
-		
 			# forward pass
 			outputs = model(inputs)
 			# calculate the loss
