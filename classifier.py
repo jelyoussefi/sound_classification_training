@@ -32,8 +32,6 @@ class SoundDataSet(AudioProcessor) :
 		self.df = self.df[self.df.duration >= 50]
 		self.df = self.df[self.df.duration <= 4000]
 
-		#print(self.df)		
-
 		self.df.insert(loc=len(self.df.columns), column='image', value=torch.Tensor);
 		self.df.insert(loc=len(self.df.columns), column='augmented', value=False);
 
@@ -71,8 +69,8 @@ class SoundDataSet(AudioProcessor) :
 		print("\nCreating {} audio spectrums ... ".format(len(self.df)));
 		st = time.time()
 		ds_len = len(self.df);
-		print(self.df)
-		for idx in range(len(self.df)):
+
+		for idx in range(ds_len):
 			audio_file = self.df.loc[idx, 'path']
 			start_time = self.df.loc[idx, 'start_time']
 			duration   = self.df.loc[idx, 'duration']
@@ -80,11 +78,11 @@ class SoundDataSet(AudioProcessor) :
 			class_ = self.df.loc[idx, 'class']
 			class_id = self.df.loc[idx, 'class_id']
 			image = self.audio_to_image(audio_file, start_time, duration, freq_peak, False)
-			self.df.at[idx, 'image'] = image
+			self.df.at[idx, 'image'] = image.cpu()
 			self.df.at[idx, 'augmented'] = False
 
 			image = self.audio_to_image(audio_file, start_time, duration, freq_peak, True)
-			aug_row = [ audio_file, start_time, duration, freq_peak, image, True, class_, class_id ]
+			aug_row = [ audio_file, start_time, duration, freq_peak, image.cpu(), True, class_, class_id ]
 			
 			self.df = self.df.append(pd.Series(aug_row, index=self.df.columns[:len(aug_row)]), ignore_index=True)
 
