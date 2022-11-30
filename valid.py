@@ -25,11 +25,9 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 	with torch.no_grad():
 		for i, data in tqdm(enumerate(valid_loader), total=len(valid_loader)):
 			counter += 1
-            
 			inputs, labels = data
 			inputs = inputs.to(device)
 			labels = labels.to(device)
-
 			# forward pass
 			outputs = model(inputs)
 			# calculate the loss
@@ -43,7 +41,7 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			correct  = (preds == labels).squeeze()
 			for i in range(len(preds)):
 				label = labels[i]
-				class_correct[label] += correct.item()
+				class_correct[label] += correct[i].item()
 				class_total[label] += 1
         
 	# loss and accuracy for the complete epoch
