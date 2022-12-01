@@ -105,8 +105,10 @@ class AudioProcessor(nn.Module) :
 
 	def spectro_gram(self, waveform, freq_peak=None):
 		sig,sr = waveform
+
+		sig = sig.to(self.device)
                 
-		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig)
+		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig).to(device.device)
 
 		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
