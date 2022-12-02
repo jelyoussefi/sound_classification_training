@@ -114,8 +114,12 @@ class SoundDataSet(AudioProcessor) :
 		return image, class_id
 
 
-def AudioCNN(nb_classes):
-	model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
-	model.fc = nn.Linear(512,nb_classes)
-	return model
+class AudioCNN:
+	def __init__(self, nb_classes):
+		self.model = resnet34(pretrained=True) #weights=ResNet34_Weights.DEFAULT
+		self.model.fc = nn.Linear(512,nb_classes)
+	
+	def __call__(self):
+		return self.model
+
 

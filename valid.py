@@ -30,6 +30,7 @@ def validate(model, device, valid_loader, loss_fn, class_names):
 			labels = labels.to(device)
 			# forward pass
 			outputs = model(inputs)
+			probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
 			# calculate the loss
 			loss = loss_fn(outputs, labels)
 			valid_running_loss += loss.item()

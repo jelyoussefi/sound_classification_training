@@ -21,7 +21,7 @@ def save(model, acc, output_dir):
 	date_time = datetime.now().strftime("%d_%m_%Y_%H_%M")
 	model_path=os.path.join(output_dir,"model_"+date_time+".pth")
 	print("\nSaving ", model_path, " model ...\n")
-	torch.save(model, model_path)
+	torch.save(model.state_dict(), model_path)
 	model_path_symblink = os.path.join(output_dir, "model.pth")
 	if os.path.islink(model_path_symblink):
 		os.remove(model_path_symblink)
@@ -89,7 +89,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=2000).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=10, max_number=20).to(device)
 
 	if csv_valid_file is None:
 		train_ds, valid_ds = ds.split(0.8)
@@ -97,7 +97,7 @@ def main(argv):
 		train_ds = ds;
 		valid_ds = SoundDataSet(device, metadata_file=csv_valid_file, classes=ds.classes, duration=1000).to(device)
 
-	model = AudioCNN(len(ds.classes)).to(device)
+	model = AudioCNN(len(ds.classes))().to(device)
 
 	with open(os.path.join(output_dir,"labels.txt"), 'w') as fp:
 		fp.write('\n'.join(ds.classes))
@@ -128,7 +128,7 @@ def main(argv):
 
 		writer.flush()
 
-		if train_acc > 99:
+		if train_acc > 90:
 			break;
 
 	save(model,train_acc,output_dir)

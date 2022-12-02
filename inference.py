@@ -4,35 +4,35 @@ import os, sys, getopt
 import time
 from datetime import datetime
 
-import numpy as n
+import numpy as np
 import torch
 from torchvision import transforms
 from torch_ort import ORTInferenceModule, OpenVINOProviderOptions
 from audio_processor import AudioProcessor
 import torchvision.transforms as T
-from torchvision.models import resnet50
+from classifier import AudioCNN
 
 def preprocess(img):
     transform = transforms.Compose(
         [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485], std=[0.229]),
+            transforms.ToPILImage(),
+    			transforms.Resize(224),
+    			transforms.ToTensor(),
+    			transforms.Normalize(
+        			mean=[0.485, 0.456, 0.406],
+        			std=[0.229, 0.224, 0.225]
+        		)
         ]
     )
     return transform(img)
     
 def infer(device, model, input_file):
 	ap = AudioProcessor(device, 1000, 41100)
-	image = ap.get_spectrum(input_file, start_time=2224, duration=738)
-	#image_m, image_s = (image*0.1).mean(), (image*0.1).std()
-	#image = 255.0*((image - image_m) / image_s)
-	transform = T.ToPILImage()
-	image = transform(image)
+	image = ap.audio_to_image(input_file, start_time=2224, duration=738, resize=True)
 	image = preprocess(image)
 	image = torch.unsqueeze(image, 0)
 	outputs=model(image)
+	print(outputs)
 	probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
 	top5_prob, top5_catid = torch.topk(probabilities, 5)
 	print("Top 5 Results: \nLabels , Probabilities:")
@@ -65,10 +65,15 @@ def main(argv):
 	device = "cpu" #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 	
-	model = torch.load(model_path).to(device)
-	print(model)
+	classes = []
+	with open("./model/labels.txt") as f:
+		classes = np.array(f.read().splitlines())
+
+	model = AudioCNN(len(classes))()
+	model.load_state_dict(torch.load(model_path))
+
 	provider_options = OpenVINOProviderOptions(backend = "CPU", precision = "FP32")
-	model = ORTInferenceModule(model, provider_options = provider_options)
+	#model = ORTInferenceModule(model, provider_options = provider_options)
 	model.eval()
 
 

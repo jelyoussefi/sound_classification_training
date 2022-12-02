@@ -27,7 +27,7 @@ class AudioProcessor(nn.Module) :
 		self.shift_pct = 0.4		
 	
 
-	def audio_to_image(self, audio_file, start_time=None, duration=None, freq_peak=None, augment=False):
+	def audio_to_image(self, audio_file, start_time=None, duration=None, freq_peak=None, augment=False, resize=True):
 		
 		f_offset = 0
 		f_audio_duration = 0
@@ -55,8 +55,9 @@ class AudioProcessor(nn.Module) :
 			sgram = self.spectro_augment(sgram, max_mask_pct=0.1, n_freq_masks=2, n_time_masks=2)
 
 		image = torch.cat([sgram, sgram, sgram])
-		max_val = torch.abs(image).max()
-		image = image / max_val
+		if resize is True:
+			max_val = torch.abs(image).max()
+			image = 255*(image / max_val)
 		return  torch.tensor(image)
 		
 
@@ -108,7 +109,7 @@ class AudioProcessor(nn.Module) :
 
 		sig = sig.to(self.device)
                 
-		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig).to(device.device)
+		spec = transforms.MelSpectrogram(sample_rate=self.frame_rate, n_fft=1024, hop_length=512, n_mels=64).to(self.device)(sig).to(self.device)
 
 		spec = transforms.AmplitudeToDB(top_db=80).to(self.device)(spec)
 
