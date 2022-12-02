@@ -73,6 +73,7 @@ def main(argv):
 		classes = np.array(f.read().splitlines())
 
 	ds = SoundDataSet(device, testcsv_file, classes, duration=1000, min_number=10, max_number=2500)
+	test_ds = ds.strip(False)
 	model = AudioCNN(len(ds.classes))().to(device)
 	model.load_state_dict(torch.load(model_path))#model = torch.load(model_path)
 	inf = Inference(device, model)

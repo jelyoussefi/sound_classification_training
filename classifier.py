@@ -88,7 +88,13 @@ class SoundDataSet(AudioProcessor) :
 
 		print("Done in {} seconds".format(int(time.time() - st)))
 				
+
+	def strip(self, augment=False):
 		
+		strip_df = self.df
+		strip_df = strip_df[strip_df.augmented == augment]
+		return strip_df
+
 	def split(self, train_ratio=0.8):
 
 		train_df = self.df.groupby('class_id').sample(frac=train_ratio, random_state=1)
