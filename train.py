@@ -89,7 +89,7 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ", device)
 
-	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=10, max_number=20).to(device)
+	ds = SoundDataSet(device, metadata_file=csv_file, duration=1000, min_number=1000, max_number=2000).to(device)
 
 	if csv_valid_file is None:
 		train_ds, valid_ds = ds.split(0.8)

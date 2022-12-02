@@ -20,7 +20,7 @@ class Inference :
 	def run(self, ds):
 		correct_prediction = 0
 		total_prediction = 0
-		val_dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=False)
+		val_dl = torch.utils.data.DataLoader(ds, batch_size=16, shuffle=False)
 		# Disable gradient updates
 		with torch.no_grad():
 			for data in val_dl:
@@ -29,8 +29,8 @@ class Inference :
 
 				
 				# Normalize the inputs
-				inputs_m, inputs_s = inputs.mean(), inputs.std()
-				inputs = (inputs - inputs_m) / inputs_s
+				#inputs_m, inputs_s = inputs.mean(), inputs.std()
+				#inputs = (inputs - inputs_m) / inputs_s
 
 				# Get predictions
 				outputs = self.model(inputs)
@@ -69,13 +69,14 @@ def main(argv):
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print("Device : ",device)
 	
-	model = torch.load(model_path)
 	with open(labels_file) as f:
 		classes = np.array(f.read().splitlines())
 
-	ds = SoundDataSet(device, testcsvFile, classes, duration=1000, min_number=100, max_number=500)
+	ds = SoundDataSet(device, testcsv_file, classes, duration=1000, min_number=10, max_number=2500)
+	model = AudioCNN(len(ds.classes))().to(device)
+	model.load_state_dict(torch.load(model_path))#model = torch.load(model_path)
 	inf = Inference(device, model)
-
+	print(f'Total files...... {len(ds)}')
 	inf.run(ds)
 
 

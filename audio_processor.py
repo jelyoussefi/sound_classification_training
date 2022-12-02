@@ -43,8 +43,9 @@ class AudioProcessor(nn.Module) :
 		sig, sr = torchaudio.load(audio_file, frame_offset=f_offset, num_frames=f_audio_duration)
 		sig = sig.to(self.device)
 		waveform = (sig, sr)
-		if augment is True:
-			waveform = self.time_shift(waveform, self.shift_pct)
+		#Time shift augment is commented
+		#if augment is True:
+		#	waveform = self.time_shift(waveform, self.shift_pct)
 
 		waveform = self.resample(waveform, self.frame_rate)
 		waveform = self.down(waveform)

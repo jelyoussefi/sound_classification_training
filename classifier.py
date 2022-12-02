@@ -93,7 +93,7 @@ class SoundDataSet(AudioProcessor) :
 
 		train_df = self.df.groupby('class_id').sample(frac=train_ratio, random_state=1)
 		valid_df = self.df.drop(train_df.index)
-		valid_df = valid_df[valid_df.augmented == True]
+		valid_df = valid_df[valid_df.augmented == False]
 
 		train_df = train_df.sample(frac=1, ignore_index=True)
 		valid_df = valid_df.sample(frac=1, ignore_index=True)
