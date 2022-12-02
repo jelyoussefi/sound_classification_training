@@ -2,6 +2,7 @@
 
 import os, sys, getopt
 import time
+import torchaudio
 from datetime import datetime
 
 import numpy as np
@@ -27,9 +28,10 @@ def preprocess(img):
     return transform(img)
     
 def infer(device, model, input_file):
-	ap = AudioProcessor(device, 1000, 41100)
-	image = ap.audio_to_image(input_file, start_time=2224, duration=738, resize=True)
-	image = preprocess(image)
+	ap = AudioProcessor(device, 1000, 44100)
+	image = ap.audio_to_image(input_file, start_time=556, duration=150, resize=True) #class ID 10,sr=44100,Otusco--Otusco--Otus-scops-579749-R9.wav;28;470;1378
+											#class ID 0, sr=44100, Alaarv--Alaarv--Alauda-arvensis-52384-R1.wav;556;150;4995
+	#image = preprocess(image)
 	image = torch.unsqueeze(image, 0)
 	outputs=model(image)
 	print(outputs)
