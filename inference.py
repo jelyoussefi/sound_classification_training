@@ -29,15 +29,16 @@ def preprocess(img):
     
 def infer(device, model, input_file, classes):
 	ap = AudioProcessor(device, 1000, 44100)
-	image = ap.audio_to_image(input_file, start_time=3374, duration=238, resize=True) 
-	#image = preprocess(image)
-	image = torch.unsqueeze(image, 0)
-	outputs=model(image)
-	print(outputs)
-	probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
-	top_prob, top_catid = torch.topk(probabilities, 1)
-	print("---------------------------------------------------")
-	print(f'\t{classes[top_catid[0]]} : {top_prob[0].item():.2f}')
+	start_time = 0
+	while start_time < (5000-100):
+		image = ap.audio_to_image(input_file, start_time=start_time, duration=1000, resize=True) 
+		image = torch.unsqueeze(image, 0)
+		outputs=model(image)
+		probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
+		top_prob, top_catid = torch.topk(probabilities, 1)
+		print("---------------------------------------------------")
+		print(f'\t{start_time}\t{classes[top_catid[0]]} : {top_prob[0].item():.2f}')
+		start_time += 100
 
 
 def main(argv):
