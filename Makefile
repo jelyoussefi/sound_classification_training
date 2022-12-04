@@ -28,7 +28,7 @@ train_valid:
 
 infer:
 	@$(call msg, Inferencing with Audio Classification Model   ...)
-	@python3 ./inference.py -m ./model/model.pth -i "./dataset/training/Asiotu--Asiotu--Asio-otus-374676-R7.wav"
+	@python3 ./inference.py -m ./model/model.pth -i "./dataset/training/Grugru--Grugru--Grus-grus-358724-R2_bruite20-50.wav"
 
 
 docker-build:
