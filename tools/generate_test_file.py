@@ -112,6 +112,8 @@ def random_concatenate(metadata_file,labels_file,cat_number,output_dir):
 			output_audio=torch.cat((output_audio,waveform[0]),1)
 		file_path=os.path.join(output_dir,output_filename+".wav") 
 		torchaudio.save(file_path,output_audio,fix_frame_rate)
+		if idx == 4 :
+		    break;
 		
 
 def main(argv):
@@ -132,13 +134,13 @@ def main(argv):
 		elif opt in ("-c", "--config"):
 			csvFile = arg
 		elif opt in ("-n", "--num"):
-			model_path = arg
+			cat_number = arg
 		elif opt in ("-l", "--labels"):
 			labesl_path = arg
 		elif opt in ("-o", "--ouput_dir"):
             		output_dir = arg
 
-	if model_path is None:
+	if cat_number is None:
 		print("{} -c <csv file> -m <model> -l <labels> ".format(argv[0]))
 		sys.exit(2)
 
